@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# 模型检查点（太大，不推GitHub）
+ai_engine/checkpoints/best_model_epoch*.pth
+ai_engine/checkpoints/best_teacher_model.pth
+ai_engine/checkpoints/best_student_model.pth
+
+# 临时文件
+*.tmp
+*.log
+report_cache/
+
+# 数据文件（太大）
+ai_engine/data/
+
+# 环境
+.venv/
+*.env

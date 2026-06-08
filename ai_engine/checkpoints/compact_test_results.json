@@ -1,0 +1,123 @@
+{
+  "test_acc": 1.0,
+  "val_acc": 1.0,
+  "best_epoch": 1,
+  "param_count": 2026,
+  "city_results": {
+    "无锡": [
+      {
+        "year": 2009,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      },
+      {
+        "year": 2024,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      },
+      {
+        "year": 2023,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      }
+    ],
+    "常州": [
+      {
+        "year": 2019,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      },
+      {
+        "year": 2011,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      },
+      {
+        "year": 2013,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      },
+      {
+        "year": 2010,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      }
+    ],
+    "南京": [
+      {
+        "year": 2009,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      },
+      {
+        "year": 2010,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      },
+      {
+        "year": 2022,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      }
+    ],
+    "镇江": [
+      {
+        "year": 2019,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      },
+      {
+        "year": 2010,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      },
+      {
+        "year": 2018,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      }
+    ],
+    "苏州": [
+      {
+        "year": 2014,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      },
+      {
+        "year": 2025,
+        "fiscal_pred": 1,
+        "fiscal_true": 1,
+        "finance_pred": 0,
+        "finance_true": 0
+      }
+    ]
+  }
+}
