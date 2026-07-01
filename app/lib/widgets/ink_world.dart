@@ -2,10 +2,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../config/colors.dart';
 
-/// 水墨 3D 世界 — 重做版，效果要明显！
+/// 水墨世界 — 80% 传统水墨 + 20% 3D
+/// 核心：宣纸底 + 墨流笔触 + 雾气 + 微光
 class InkWorld extends StatefulWidget {
   final Widget child;
-
   const InkWorld({super.key, required this.child});
 
   @override
@@ -13,22 +13,22 @@ class InkWorld extends StatefulWidget {
 }
 
 class _InkWorldState extends State<InkWorld> with TickerProviderStateMixin {
-  late AnimationController _flowCtrl;
-  late AnimationController _particleCtrl;
-  late List<_InkDot> _dots;
+  late AnimationController _brushCtrl;  // 笔触流动（慢）
+  late AnimationController _mistCtrl;   // 雾气飘动（很慢）
 
   @override
   void initState() {
     super.initState();
-    _flowCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 12))..repeat();
-    _particleCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
-    _dots = List.generate(45, (_) => _InkDot.random());
+    // 笔触流动：20秒一轮，缓慢如溪水
+    _brushCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 20))..repeat();
+    // 雾气飘动：30秒一轮，极慢如山间云雾
+    _mistCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 30))..repeat();
   }
 
   @override
   void dispose() {
-    _flowCtrl.dispose();
-    _particleCtrl.dispose();
+    _brushCtrl.dispose();
+    _mistCtrl.dispose();
     super.dispose();
   }
 
@@ -36,45 +36,42 @@ class _InkWorldState extends State<InkWorld> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // 1. 深墨底色
+        // 1. 宣纸底（微微泛黄的暖白，不是纯黑！）
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
               colors: [
-                Color(0xFF060A14),
-                Color(0xFF0D1520),
-                Color(0xFF0F1D2E),
-                Color(0xFF132438),
+                Color(0xFF0B0F18), // 夜空墨
+                Color(0xFF101825), // 深墨
+                Color(0xFF141E2E), // 墨蓝
+                Color(0xFF0D1520), // 回深
               ],
             ),
           ),
         ),
 
-        // 2. 水墨流动纹理（高对比度，必须看得见！）
+        // 2. 墨流笔触层（主体，80%）
         ListenableBuilder(
-          listenable: _flowCtrl,
+          listenable: _brushCtrl,
           builder: (_, __) => CustomPaint(
             size: Size.infinite,
-            painter: _FlowPainter(time: _flowCtrl.value * 12),
+            painter: _InkBrushPainter(time: _brushCtrl.value * 20),
           ),
         ),
 
-        // 3. 墨点粒子（大而亮）
+        // 3. 雾气层（飘渺感）
         ListenableBuilder(
-          listenable: _particleCtrl,
-          builder: (_, __) {
-            _updateDots();
-            return CustomPaint(
-              size: Size.infinite,
-              painter: _DotPainter(dots: _dots),
-            );
-          },
+          listenable: _mistCtrl,
+          builder: (_, __) => CustomPaint(
+            size: Size.infinite,
+            painter: _MistPainter(time: _mistCtrl.value * 30),
+          ),
         ),
 
-        // 4. 光晕
-        _buildGlow(),
+        // 4. 微光（20% 3D点缀 — 极淡，不抢戏）
+        _buildSubtleGlow(),
 
         // 5. 内容
         widget.child,
@@ -82,93 +79,39 @@ class _InkWorldState extends State<InkWorld> with TickerProviderStateMixin {
     );
   }
 
-  void _updateDots() {
-    for (final d in _dots) {
-      d.x += d.vx;
-      d.y += d.vy;
-      d.vy += 0.0003; // 微重力
-      d.vx *= 0.999;
-      d.vy *= 0.999;
-      if (d.x < -0.1) d.x = 1.1;
-      if (d.x > 1.1) d.x = -0.1;
-      if (d.y > 1.15) {
-        d.y = -0.05;
-        d.x = Random().nextDouble();
-      }
-      d.life -= d.decay;
-      if (d.life <= 0) {
-        d.reset();
-      }
-    }
-  }
-
-  Widget _buildGlow() {
+  /// 微光 — 3D点缀，极淡
+  Widget _buildSubtleGlow() {
     return IgnorePointer(
       child: Stack(
         children: [
-          // 顶部正青光晕
+          // 正青微光（像月光透过墨色）
           Positioned(
-            top: -80, left: -60, right: -60,
+            top: -60, left: -40, right: -40,
             child: Container(
-              height: 280,
+              height: 250,
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  center: const Alignment(0.1, -0.2),
+                  center: const Alignment(0.1, -0.3),
+                  radius: 1.5,
+                  colors: [
+                    AppColors.zhengqing.withOpacity(0.06),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // 晴山微光（底部）
+          Positioned(
+            bottom: -40, left: -40, right: -40,
+            child: Container(
+              height: 200,
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, 0.5),
                   radius: 1.3,
                   colors: [
-                    AppColors.zhengqing.withOpacity(0.15),
-                    AppColors.huaqing.withOpacity(0.05),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // 底部晴山光晕
-          Positioned(
-            bottom: -60, left: -60, right: -60,
-            child: Container(
-              height: 240,
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(-0.1, 0.4),
-                  radius: 1.2,
-                  colors: [
-                    AppColors.qingshan.withOpacity(0.08),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // 左侧大繎光晕
-          Positioned(
-            top: 150, left: -80,
-            child: Container(
-              width: 180, height: 350,
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.centerRight,
-                  radius: 1.4,
-                  colors: [
-                    AppColors.daran.withOpacity(0.06),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // 右侧紫苑光晕
-          Positioned(
-            top: 300, right: -60,
-            child: Container(
-              width: 160, height: 300,
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.centerLeft,
-                  radius: 1.3,
-                  colors: [
-                    AppColors.ziyan.withOpacity(0.05),
+                    AppColors.qingshan.withOpacity(0.04),
                     Colors.transparent,
                   ],
                 ),
@@ -181,43 +124,114 @@ class _InkWorldState extends State<InkWorld> with TickerProviderStateMixin {
   }
 }
 
-// ══════════════════════════════════════════════════
-// 流动纹理（高对比度版）
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// 墨流笔触 — 模拟毛笔在宣纸上缓慢运笔
+// 不是粒子！是大面积、柔和、流动的墨迹
+// ══════════════════════════════════════════════════════════
 
-class _FlowPainter extends CustomPainter {
+class _InkBrushPainter extends CustomPainter {
   final double time;
-  _FlowPainter({required this.time});
+  _InkBrushPainter({required this.time});
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 5层流动纹理，每层用不同五行色，opacity 调高
-    _drawLayer(canvas, size, 0.12, 0.3, AppColors.huaqing);    // 花青（深蓝）
-    _drawLayer(canvas, size, 0.10, 0.5, AppColors.jingyuan);   // 京元（深墨）
-    _drawLayer(canvas, size, 0.08, 0.7, AppColors.qingdai);    // 青黛（灰紫）
-    _drawLayer(canvas, size, 0.06, 1.0, AppColors.zhengqing);  // 正青（青瓷）
-    _drawLayer(canvas, size, 0.05, 0.4, AppColors.yuyangran);  // 育阳染（灰蓝）
+    // 大笔触：横扫画面的墨流
+    _drawBrushStroke(canvas, size,
+      yRatio: 0.35,
+      amplitude: 0.15,
+      frequency: 2.5,
+      speed: 0.4,
+      color: AppColors.huaqing,   // 花青
+      opacity: 0.15,
+      thickness: size.height * 0.25,
+    );
+
+    _drawBrushStroke(canvas, size,
+      yRatio: 0.45,
+      amplitude: 0.12,
+      frequency: 3.0,
+      speed: 0.6,
+      color: AppColors.jingyuan,  // 京元
+      opacity: 0.12,
+      thickness: size.height * 0.2,
+    );
+
+    _drawBrushStroke(canvas, size,
+      yRatio: 0.55,
+      amplitude: 0.1,
+      frequency: 2.0,
+      speed: 0.3,
+      color: AppColors.qingdai,   // 青黛
+      opacity: 0.10,
+      thickness: size.height * 0.18,
+    );
+
+    // 细笔触：像毛笔尖端的飞白
+    _drawBrushStroke(canvas, size,
+      yRatio: 0.28,
+      amplitude: 0.08,
+      frequency: 4.0,
+      speed: 0.8,
+      color: AppColors.zhengqing, // 正青
+      opacity: 0.06,
+      thickness: size.height * 0.08,
+    );
+
+    _drawBrushStroke(canvas, size,
+      yRatio: 0.62,
+      amplitude: 0.06,
+      frequency: 3.5,
+      speed: 0.5,
+      color: AppColors.yuyangran, // 育阳染
+      opacity: 0.05,
+      thickness: size.height * 0.06,
+    );
   }
 
-  void _drawLayer(Canvas canvas, Size size, double opacity, double speed, Color color) {
-    final paint = Paint()
-      ..color = color.withOpacity(opacity)
-      ..style = PaintingStyle.fill;
+  /// 绘制一条笔触 — 大面积柔和的墨流
+  void _drawBrushStroke(
+    Canvas canvas, Size size, {
+    required double yRatio,
+    required double amplitude,
+    required double frequency,
+    required double speed,
+    required Color color,
+    required double opacity,
+    required double thickness,
+  }) {
+    final w = size.width;
+    final h = size.height;
+    final baseY = h * yRatio;
 
     final path = Path();
-    final h = size.height;
-    final w = size.width;
     path.moveTo(0, h);
 
+    // 用多层正弦叠加模拟毛笔运笔的自然抖动
     for (double x = 0; x <= w; x += 2) {
-      final y = h * 0.38 +
-          sin((x / w * 3.5) + time * speed) * h * 0.14 +
-          sin((x / w * 1.8) + time * speed * 0.55) * h * 0.09 +
-          cos((x / w * 5.5) + time * speed * 1.15) * h * 0.05;
+      final nx = x / w;
+      final y = baseY +
+          sin(nx * frequency * pi + time * speed) * h * amplitude +
+          sin(nx * frequency * 1.7 * pi + time * speed * 0.6) * h * amplitude * 0.4 +
+          cos(nx * frequency * 2.3 * pi + time * speed * 1.2) * h * amplitude * 0.2;
       path.lineTo(x, y);
     }
     path.lineTo(w, h);
     path.close();
+
+    // 笔触有渐变（中间浓，边缘淡，像真实墨迹）
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          color.withOpacity(opacity * 0.3),
+          color.withOpacity(opacity),
+          color.withOpacity(opacity * 0.6),
+          color.withOpacity(0),
+        ],
+        stops: const [0.0, 0.3, 0.7, 1.0],
+      ).createShader(Rect.fromLTWH(0, baseY - thickness * 0.5, w, thickness));
+
     canvas.drawPath(path, paint);
   }
 
@@ -225,91 +239,66 @@ class _FlowPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-// ══════════════════════════════════════════════════
-// 墨点粒子（大而亮，必须看见！）
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// 雾气 — 山间云雾，飘渺感
+// ══════════════════════════════════════════════════════════
 
-class _InkDot {
-  double x, y, vx, vy, size, life, decay;
-  Color color;
-  double glowR;
-
-  _InkDot({
-    required this.x, required this.y,
-    required this.vx, required this.vy,
-    required this.size, required this.life, required this.decay,
-    required this.color, required this.glowR,
-  });
-
-  factory _InkDot.random() {
-    final rng = Random();
-    final colors = [
-      AppColors.zhengqing,   // 正青
-      AppColors.qingshan,    // 晴山
-      AppColors.ziyan,       // 紫苑
-      AppColors.yuebai,      // 月白
-      AppColors.zhuyantuo,   // 朱颜酡
-      AppColors.piaobi,      // 缥碧
-    ];
-    return _InkDot(
-      x: rng.nextDouble(),
-      y: rng.nextDouble(),
-      vx: (rng.nextDouble() - 0.5) * 0.12,
-      vy: (rng.nextDouble() - 0.5) * 0.08,
-      size: 2 + rng.nextDouble() * 4,  // 更大！
-      life: 1.0,
-      decay: rng.nextDouble() * 0.001 + 0.0005,
-      color: colors[rng.nextInt(colors.length)],
-      glowR: 8 + rng.nextDouble() * 12,  // 更大光晕
-    );
-  }
-
-  void reset() {
-    final rng = Random();
-    x = rng.nextDouble();
-    y = rng.nextDouble() * 0.4;
-    vx = (rng.nextDouble() - 0.5) * 0.12;
-    vy = rng.nextDouble() * 0.03;
-    life = 1.0;
-  }
-}
-
-class _DotPainter extends CustomPainter {
-  final List<_InkDot> dots;
-  _DotPainter({required this.dots});
+class _MistPainter extends CustomPainter {
+  final double time;
+  _MistPainter({required this.time});
 
   @override
   void paint(Canvas canvas, Size size) {
-    for (final d in dots) {
-      final px = d.x * size.width;
-      final py = d.y * size.height;
-      final alpha = d.life.clamp(0.0, 1.0);
+    final w = size.width;
+    final h = size.height;
 
-      // 光晕（必须大而明显）
-      canvas.drawCircle(
-        Offset(px, py),
-        d.glowR,
-        Paint()
-          ..color = d.color.withOpacity(alpha * 0.2)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
-      );
+    // 多团雾气缓缓飘动
+    _drawMistCloud(canvas, size,
+      cx: 0.2 + sin(time * 0.1) * 0.1,
+      cy: 0.3 + cos(time * 0.08) * 0.05,
+      radius: 0.35,
+      opacity: 0.04,
+      color: AppColors.yuebai,
+    );
 
-      // 墨点本体
-      canvas.drawCircle(
-        Offset(px, py),
-        d.size * alpha,
-        Paint()..color = d.color.withOpacity(alpha * 0.8),
-      );
+    _drawMistCloud(canvas, size,
+      cx: 0.7 + cos(time * 0.07) * 0.12,
+      cy: 0.5 + sin(time * 0.06) * 0.06,
+      radius: 0.4,
+      opacity: 0.03,
+      color: AppColors.qingshan,
+    );
 
-      // 高光点
-      if (d.size > 2.5) {
-        canvas.drawCircle(
-          Offset(px - d.size * 0.3, py - d.size * 0.3),
-          d.size * 0.3,
-          Paint()..color = AppColors.gaoyu.withOpacity(alpha * 0.5),
-        );
-      }
-    }
+    _drawMistCloud(canvas, size,
+      cx: 0.5 + sin(time * 0.09) * 0.08,
+      cy: 0.7 + cos(time * 0.05) * 0.04,
+      radius: 0.3,
+      opacity: 0.035,
+      color: AppColors.zhengqing,
+    );
+  }
+
+  void _drawMistCloud(Canvas canvas, Size size, {
+    required double cx, required double cy,
+    required double radius, required double opacity,
+    required Color color,
+  }) {
+    final center = Offset(cx * size.width, cy * size.height);
+    final r = radius * size.width;
+
+    canvas.drawCircle(
+      center,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            color.withOpacity(opacity),
+            color.withOpacity(opacity * 0.4),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.5, 1.0],
+        ).createShader(Rect.fromCircle(center: center, radius: r)),
+    );
   }
 
   @override
