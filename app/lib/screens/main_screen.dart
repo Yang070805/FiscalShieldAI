@@ -19,6 +19,17 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  late String _currentRole;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentRole = widget.role;
+  }
+
+  void switchRole(String newRole) {
+    setState(() => _currentRole = newRole);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +61,7 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               Text('FiscalShield AI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.paper, letterSpacing: 2, decoration: TextDecoration.none)),
               Text(
-                '${widget.role}${widget.isGuest ? " · 游客模式" : ""}',
+                '${_currentRole}${widget.isGuest ? " · 游客模式" : ""}',
                 style: TextStyle(fontSize: 12, color: AppColors.paperMid),
               ),
             ],
@@ -126,20 +137,20 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildBody() {
     switch (_currentIndex) {
       case 0:
-        return DashboardTab(role: widget.role, isGuest: widget.isGuest);
+        return DashboardTab(role: _currentRole, isGuest: widget.isGuest);
       case 1:
         // 政务版/企业版中间tab显示功能页，民用版显示搜索
-        if (widget.role == '民用版') return _buildCivilianSearch();
+        if (_currentRole == '民用版') return _buildCivilianSearch();
         return _buildFeatureTab();
       case 2:
-        return ProfileTab(role: widget.role, isGuest: widget.isGuest);
+        return ProfileTab(role: _currentRole, isGuest: widget.isGuest, onRoleSwitch: switchRole);
       default:
-        return DashboardTab(role: widget.role, isGuest: widget.isGuest);
+        return DashboardTab(role: _currentRole, isGuest: widget.isGuest);
     }
   }
 
   Widget _buildFeatureTab() {
-    final isGov = widget.role == '政务版';
+    final isGov = _currentRole == '政务版';
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -328,15 +339,15 @@ class _MainScreenState extends State<MainScreen> {
       ..add({'icon': Icons.person_rounded, 'label': '我的'});
 
     // 政务版专属：监控入口
-    if (widget.role == '政务版') {
+    if (_currentRole == '政务版') {
       items.insert(1, {'icon': Icons.shield_rounded, 'label': '监控'});
     }
     // 企业版专属：分析入口
-    if (widget.role == '企业版') {
+    if (_currentRole == '企业版') {
       items.insert(1, {'icon': Icons.analytics_rounded, 'label': '分析'});
     }
     // 民用版专属：搜索入口
-    if (widget.role == '民用版') {
+    if (_currentRole == '民用版') {
       items.insert(0, {'icon': Icons.search_rounded, 'label': '搜索'});
     }
 
