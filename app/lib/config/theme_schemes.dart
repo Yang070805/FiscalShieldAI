@@ -16,6 +16,17 @@ class ThemeNotifier extends ChangeNotifier {
   // 字体：0=系统默认, 1~9 各字体
   int _fontFamilyLevel = 0;
   int get fontFamilyLevel => _fontFamilyLevel;
+
+  // 头像
+  String _avatarName = 'bamboo';
+  String get avatarName => _avatarName;
+  String _customAvatarPath = '';
+  String get avatarPath {
+    if (_avatarName == 'custom' && _customAvatarPath.isNotEmpty) {
+      return _customAvatarPath;
+    }
+    return 'assets/avatars/$_avatarName.png';
+  }
   String get fontFamily {
     const fonts = ['', 'SourceHanSans', 'SourceHanSerif', 'SmileySans',
       'LXGWWenKai', 'MiSans', 'AlibabaPuHuiTi', 'PangMenBiaoDaoTi',
@@ -55,6 +66,16 @@ class ThemeNotifier extends ChangeNotifier {
 
   void setFontFamily(int level) {
     _fontFamilyLevel = level.clamp(0, 9);
+    notifyListeners();
+  }
+
+  void setAvatar(String name) {
+    _avatarName = name;
+    notifyListeners();
+  }
+
+  void setCustomAvatarPath(String path) {
+    _customAvatarPath = path;
     notifyListeners();
   }
 }

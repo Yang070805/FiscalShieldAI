@@ -5,6 +5,8 @@ import '../config/colors.dart';
 import '../config/theme_schemes.dart';
 import '../widgets/ink_world.dart';
 import '../widgets/glass_widgets.dart';
+import '../main.dart';
+import 'avatar_picker_screen.dart';
 
 /// 设置页
 class SettingsScreen extends StatelessWidget {
@@ -46,7 +48,7 @@ class SettingsScreen extends StatelessWidget {
                       _fontSizeItem(context),
                       _fontFamilyItem(context),
                       _themeItem(context),
-                      _item(Icons.face_rounded, '头像设置', ''),
+                      _avatarItem(context),
                     ]),
                     const SizedBox(height: 16),
                     _section('隐私与数据', [
@@ -98,6 +100,31 @@ class SettingsScreen extends StatelessWidget {
           if (trailing.isNotEmpty)
             Text(trailing, style: TextStyle(fontSize: 13, color: AppColors.paperDim)),
           const SizedBox(width: 4),
+          Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.paperDim),
+        ]),
+      ),
+    );
+  }
+
+  /// 头像设置项
+  Widget _avatarItem(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AvatarPickerScreen()));
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(children: [
+          Icon(Icons.face_rounded, size: 20, color: AppColors.sky),
+          const SizedBox(width: 12),
+          Text('头像设置', style: TextStyle(fontSize: 15, color: AppColors.paper)),
+          const Spacer(),
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppColors.glassBorder)),
+            child: ClipOval(child: Image.asset(themeNotifier.avatarPath, fit: BoxFit.cover)),
+          ),
+          const SizedBox(width: 8),
           Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.paperDim),
         ]),
       ),

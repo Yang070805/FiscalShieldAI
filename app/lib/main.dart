@@ -45,6 +45,10 @@ class _FiscalShieldAppState extends State<FiscalShieldApp> {
     themeNotifier.setFontSize(savedFontSize);
     final savedFontFamily = prefs.getInt('fontFamily') ?? 0;
     themeNotifier.setFontFamily(savedFontFamily);
+    final savedAvatar = prefs.getString('avatar') ?? 'bamboo';
+    themeNotifier.setAvatar(savedAvatar);
+    final savedCustomAvatar = prefs.getString('customAvatarPath') ?? '';
+    if (savedCustomAvatar.isNotEmpty) themeNotifier.setCustomAvatarPath(savedCustomAvatar);
   }
 
   void _onThemeChange() {

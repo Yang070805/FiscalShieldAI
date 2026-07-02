@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/colors.dart';
+import '../config/theme_schemes.dart';
 import '../widgets/glass_widgets.dart';
+import 'avatar_picker_screen.dart';
 import 'settings_screen.dart';
 
 /// 个人中心
@@ -17,15 +21,24 @@ class ProfileTab extends StatelessWidget {
         children: [
           const SizedBox(height: 16),
           // 头像
-          Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(colors: [AppColors.celadon, AppColors.sky]),
-              boxShadow: [BoxShadow(color: AppColors.celadon.withOpacity(0.3), blurRadius: 24, spreadRadius: 4)],
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AvatarPickerScreen()));
+            },
+            child: Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.celadon.withOpacity(0.5), width: 2),
+                boxShadow: [BoxShadow(color: AppColors.celadon.withOpacity(0.3), blurRadius: 24, spreadRadius: 4)],
+              ),
+              child: ClipOval(
+                child: themeNotifier.avatarName == 'custom'
+                    ? Image.file(File(themeNotifier.avatarPath), fit: BoxFit.cover)
+                    : Image.asset(themeNotifier.avatarPath, fit: BoxFit.cover),
+              ),
             ),
-            child: const Icon(Icons.person_rounded, size: 44, color: Colors.white),
           ),
           const SizedBox(height: 14),
           Text('FiscalShield AI用户', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.paper, decoration: TextDecoration.none)),
@@ -55,8 +68,19 @@ class ProfileTab extends StatelessWidget {
               _divider(),
               _menuItem(Icons.info_outline_rounded, '关于', () {}),
               _divider(),
-              _menuItem(Icons.logout_rounded, '退出登录', () {
-                Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
+              _menuItem(Icons.logout_rounded, '退出登录', () async {
+                if (isGuest) {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.clear();
+                  themeNotifier.setTheme(ThemeType.inkBlue);
+                  themeNotifier.setFontSize(0);
+                  themeNotifier.setFontFamily(0);
+                  themeNotifier.setAvatar('bamboo');
+                  themeNotifier.setCustomAvatarPath('');
+                }
+                if (context.mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
+                }
               }, isDestructive: true),
             ]),
           ),
