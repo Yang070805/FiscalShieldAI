@@ -30,24 +30,12 @@ class InkWorld extends StatefulWidget {
 
   /// 笔触层（墨流线条，需要 AnimationController）
   static Widget inkBrush(AnimationController ctrl) {
-    return ListenableBuilder(
-      listenable: ctrl,
-      builder: (_, __) => CustomPaint(
-        size: Size.infinite,
-        painter: InkBrushPainter(time: ctrl.value * 20),
-      ),
-    );
+    return _InkBrushWidget(ctrl: ctrl);
   }
 
   /// 雾气层（需要 AnimationController）
   static Widget inkMist(AnimationController ctrl) {
-    return ListenableBuilder(
-      listenable: ctrl,
-      builder: (_, __) => CustomPaint(
-        size: Size.infinite,
-        painter: MistPainter(time: ctrl.value * 30),
-      ),
-    );
+    return _InkMistWidget(ctrl: ctrl);
   }
 
   @override
@@ -98,22 +86,10 @@ class _InkWorldState extends State<InkWorld> with TickerProviderStateMixin {
         ),
 
         // 2. 墨流笔触（shuimo-ui 原色）
-        ListenableBuilder(
-          listenable: _brushCtrl,
-          builder: (_, __) => CustomPaint(
-            size: Size.infinite,
-            painter: InkBrushPainter(time: _brushCtrl.value * 20),
-          ),
-        ),
+        _InkBrushWidget(ctrl: _brushCtrl),
 
         // 3. 雾气
-        ListenableBuilder(
-          listenable: _mistCtrl,
-          builder: (_, __) => CustomPaint(
-            size: Size.infinite,
-            painter: MistPainter(time: _mistCtrl.value * 30),
-          ),
-        ),
+        _InkMistWidget(ctrl: _mistCtrl),
 
         // 4. 微光（正青 + 晴山）
         _buildGlow(),
@@ -137,7 +113,7 @@ class _InkWorldState extends State<InkWorld> with TickerProviderStateMixin {
                   center: const Alignment(0.1, -0.3),
                   radius: 1.5,
                   colors: [
-                    const Color(0xFF6CA8AF).withOpacity(0.06), // 正青
+                    const Color(0xFF6CA8AF).withOpacity(0.12), // 正青
                     Colors.transparent,
                   ],
                 ),
@@ -153,7 +129,7 @@ class _InkWorldState extends State<InkWorld> with TickerProviderStateMixin {
                   center: const Alignment(0, 0.5),
                   radius: 1.3,
                   colors: [
-                    const Color(0xFFA3BBDB).withOpacity(0.04), // 晴山
+                    const Color(0xFFA3BBDB).withOpacity(0.10), // 晴山
                     Colors.transparent,
                   ],
                 ),
@@ -167,7 +143,118 @@ class _InkWorldState extends State<InkWorld> with TickerProviderStateMixin {
 }
 
 // ══════════════════════════════════════════════════════════
-// 墨流笔触 — shuimo-ui 原版五行色
+// 累加器计时 Widget — 解决循环卡帧
+// ══════════════════════════════════════════════════════════
+
+class _InkBrushWidget extends StatefulWidget {
+  final AnimationController ctrl;
+  const _InkBrushWidget({required this.ctrl});
+  @override
+  State<_InkBrushWidget> createState() => _InkBrushWidgetState();
+}
+
+class _InkBrushWidgetState extends State<_InkBrushWidget> {
+  double _time = 0;
+  double _lastValue = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.ctrl.addListener(_onTick);
+  }
+
+  @override
+  void didUpdateWidget(covariant _InkBrushWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.ctrl != widget.ctrl) {
+      oldWidget.ctrl.removeListener(_onTick);
+      widget.ctrl.addListener(_onTick);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.ctrl.removeListener(_onTick);
+    super.dispose();
+  }
+
+  void _onTick() {
+    final v = widget.ctrl.value;
+    // 检测循环跳变：如果 value 变小了，说明控制器重新开始了
+    if (v < _lastValue - 0.5) {
+      // 跳变时不清零，保持 time 连续
+      // 用当前 value 替代跳变，平滑过渡
+      _time += (1.0 - _lastValue) + v;
+    } else {
+      _time += (v - _lastValue).abs();
+    }
+    _lastValue = v;
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.infinite,
+      painter: InkBrushPainter(time: _time),
+    );
+  }
+}
+
+class _InkMistWidget extends StatefulWidget {
+  final AnimationController ctrl;
+  const _InkMistWidget({required this.ctrl});
+  @override
+  State<_InkMistWidget> createState() => _InkMistWidgetState();
+}
+
+class _InkMistWidgetState extends State<_InkMistWidget> {
+  double _time = 0;
+  double _lastValue = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.ctrl.addListener(_onTick);
+  }
+
+  @override
+  void didUpdateWidget(covariant _InkMistWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.ctrl != widget.ctrl) {
+      oldWidget.ctrl.removeListener(_onTick);
+      widget.ctrl.addListener(_onTick);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.ctrl.removeListener(_onTick);
+    super.dispose();
+  }
+
+  void _onTick() {
+    final v = widget.ctrl.value;
+    if (v < _lastValue - 0.5) {
+      _time += (1.0 - _lastValue) + v;
+    } else {
+      _time += (v - _lastValue).abs();
+    }
+    _lastValue = v;
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.infinite,
+      painter: MistPainter(time: _time),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// 墨流笔触 — 发光水墨
 // ══════════════════════════════════════════════════════════
 
 class InkBrushPainter extends CustomPainter {
@@ -176,32 +263,42 @@ class InkBrushPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 大笔触 — 水·冬深色系
-    _drawStroke(canvas, size, yRatio: 0.32, amp: 0.15, freq: 2.5, speed: 0.4,
-      color: const Color(0xFF1A2847), opacity: 0.18, thickness: 0.25); // 花青
+    // ═══ 发光水墨笔触 ═══
+    // 粗·中·细随机排列，覆盖全屏，流速更快
 
-    _drawStroke(canvas, size, yRatio: 0.42, amp: 0.12, freq: 3.0, speed: 0.6,
-      color: const Color(0xFF31322C), opacity: 0.14, thickness: 0.20); // 京元
+    // 粗 — 正青（主色光带，上部）
+    _drawStroke(canvas, size, yRatio: 0.12, amp: 0.15, freq: 2.5, speed: 3.0,
+      color: const Color(0xFF6CA8AF), opacity: 0.35, thickness: 0.28, glow: 8.0);
 
-    _drawStroke(canvas, size, yRatio: 0.52, amp: 0.10, freq: 2.0, speed: 0.3,
-      color: const Color(0xFF45465E), opacity: 0.11, thickness: 0.18); // 青黛
+    // 细 — 月白（高光细线，中上）密度×1.15
+    _drawStroke(canvas, size, yRatio: 0.25, amp: 0.069, freq: 5.0, speed: 6.0,
+      color: const Color(0xFFD4E5EF), opacity: 0.20, thickness: 0.06, glow: 3.0);
 
-    // 细笔触 — 水·冬浅色系
-    _drawStroke(canvas, size, yRatio: 0.26, amp: 0.08, freq: 4.0, speed: 0.8,
-      color: const Color(0xFF13393E), opacity: 0.08, thickness: 0.08); // 螺子黛
+    // 中 — 晴山（天蓝，中部偏上）密度×1.1
+    _drawStroke(canvas, size, yRatio: 0.36, amp: 0.11, freq: 3.0, speed: 4.1,
+      color: const Color(0xFFA3BBDB), opacity: 0.28, thickness: 0.16, glow: 6.0);
 
-    _drawStroke(canvas, size, yRatio: 0.60, amp: 0.06, freq: 3.5, speed: 0.5,
-      color: const Color(0xFF576470), opacity: 0.06, thickness: 0.06); // 育阳染
+    // 粗 — 紫苑（紫调，中部）
+    _drawStroke(canvas, size, yRatio: 0.48, amp: 0.12, freq: 2.2, speed: 2.4,
+      color: const Color(0xFF757CBB), opacity: 0.25, thickness: 0.22, glow: 5.0);
 
-    // 飞白 — 木·春点缀（极淡）
-    _drawStroke(canvas, size, yRatio: 0.35, amp: 0.05, freq: 5.0, speed: 1.0,
-      color: const Color(0xFF284852), opacity: 0.04, thickness: 0.04); // 青绶
+    // 细 — 石英（暖色微光，中下）密度×1.15
+    _drawStroke(canvas, size, yRatio: 0.58, amp: 0.058, freq: 6.0, speed: 6.8,
+      color: const Color(0xFFC8B6BB), opacity: 0.15, thickness: 0.05, glow: 2.5);
+
+    // 中 — 正青副线（下部）密度×1.1
+    _drawStroke(canvas, size, yRatio: 0.70, amp: 0.088, freq: 3.8, speed: 4.8,
+      color: const Color(0xFF6CA8AF), opacity: 0.18, thickness: 0.12, glow: 4.0);
+
+    // 粗 — 晴山副线（底部）
+    _drawStroke(canvas, size, yRatio: 0.83, amp: 0.11, freq: 2.8, speed: 3.4,
+      color: const Color(0xFFA3BBDB), opacity: 0.20, thickness: 0.20, glow: 5.0);
   }
 
   void _drawStroke(Canvas canvas, Size size, {
     required double yRatio, required double amp, required double freq,
     required double speed, required Color color,
-    required double opacity, required double thickness,
+    required double opacity, required double thickness, double glow = 0.0,
   }) {
     final w = size.width;
     final h = size.height;
@@ -220,17 +317,36 @@ class InkBrushPainter extends CustomPainter {
     path.lineTo(w, h);
     path.close();
 
+    // 光晕层（blur 发光）
+    if (glow > 0) {
+      final glowPaint = Paint()
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, glow)
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withOpacity(opacity * 0.5),
+            color.withOpacity(opacity * 0.8),
+            color.withOpacity(opacity * 0.3),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.25, 0.65, 1.0],
+        ).createShader(Rect.fromLTWH(0, baseY - h * thickness * 0.5, w, h * thickness));
+      canvas.drawPath(path, glowPaint);
+    }
+
+    // 实体笔触层
     final paint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          color.withOpacity(opacity * 0.3),
+          color.withOpacity(opacity * 0.4),
           color.withOpacity(opacity),
-          color.withOpacity(opacity * 0.6),
+          color.withOpacity(opacity * 0.7),
           Colors.transparent,
         ],
-        stops: const [0.0, 0.3, 0.7, 1.0],
+        stops: const [0.0, 0.2, 0.6, 1.0],
       ).createShader(Rect.fromLTWH(0, baseY - h * thickness * 0.5, w, h * thickness));
 
     canvas.drawPath(path, paint);
@@ -250,25 +366,45 @@ class MistPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _drawCloud(canvas, size,
-      cx: 0.2 + sin(time * 0.1) * 0.1, cy: 0.3 + cos(time * 0.08) * 0.05,
-      r: 0.35, opacity: 0.04, color: const Color(0xFFD4E5EF)); // 月白
+    // ═══ 发光雾气 ═══
+    // 浅色 + blur 光晕 + 更高 opacity
+    // 覆盖全屏
 
     _drawCloud(canvas, size,
-      cx: 0.7 + cos(time * 0.07) * 0.12, cy: 0.5 + sin(time * 0.06) * 0.06,
-      r: 0.4, opacity: 0.03, color: const Color(0xFFA3BBDB)); // 晴山
+      cx: 0.2 + sin(time * 0.1) * 0.1, cy: 0.2 + cos(time * 0.08) * 0.05,
+      r: 0.35, opacity: 0.12, color: const Color(0xFFD4E5EF), glow: 30.0); // 月白·上
+
+    _drawCloud(canvas, size,
+      cx: 0.7 + cos(time * 0.07) * 0.12, cy: 0.45 + sin(time * 0.06) * 0.06,
+      r: 0.4, opacity: 0.10, color: const Color(0xFFA3BBDB), glow: 25.0); // 晴山·中
 
     _drawCloud(canvas, size,
       cx: 0.5 + sin(time * 0.09) * 0.08, cy: 0.7 + cos(time * 0.05) * 0.04,
-      r: 0.3, opacity: 0.035, color: const Color(0xFFC8B6BB)); // 石英
+      r: 0.3, opacity: 0.09, color: const Color(0xFF6CA8AF), glow: 20.0); // 正青·下
+
+    _drawCloud(canvas, size,
+      cx: 0.3 + cos(time * 0.06) * 0.1, cy: 0.88 + sin(time * 0.04) * 0.03,
+      r: 0.25, opacity: 0.07, color: const Color(0xFF757CBB), glow: 15.0); // 紫苑·底
   }
 
   void _drawCloud(Canvas canvas, Size size, {
     required double cx, required double cy, required double r,
-    required double opacity, required Color color,
+    required double opacity, required Color color, double glow = 0.0,
   }) {
     final center = Offset(cx * size.width, cy * size.height);
     final radius = r * size.width;
+
+    // 光晕层
+    if (glow > 0) {
+      canvas.drawCircle(center, radius * 1.3, Paint()
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, glow)
+        ..shader = RadialGradient(
+          colors: [color.withOpacity(opacity * 0.4), color.withOpacity(opacity * 0.15), Colors.transparent],
+          stops: const [0.0, 0.4, 1.0],
+        ).createShader(Rect.fromCircle(center: center, radius: radius * 1.3)));
+    }
+
+    // 实体雾气
     canvas.drawCircle(center, radius, Paint()
       ..shader = RadialGradient(
         colors: [color.withOpacity(opacity), color.withOpacity(opacity * 0.4), Colors.transparent],
