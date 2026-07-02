@@ -32,7 +32,6 @@ class AvatarPickerScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // 顶栏
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(children: [
@@ -44,16 +43,10 @@ class AvatarPickerScreen extends StatelessWidget {
                   Text('选择头像', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
                 ]),
               ),
-
-              // 当前头像预览
               _buildCurrentAvatar(context),
               const SizedBox(height: 20),
-
-              // 拍照/相册按钮
               _buildActionButtons(context),
               const SizedBox(height: 20),
-
-              // 预设头像列表
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Align(
@@ -81,7 +74,6 @@ class AvatarPickerScreen extends StatelessWidget {
     );
   }
 
-  /// 当前头像预览
   Widget _buildCurrentAvatar(BuildContext context) {
     final isCustom = themeNotifier.avatarName == 'custom';
     return Column(
@@ -109,7 +101,6 @@ class AvatarPickerScreen extends StatelessWidget {
     );
   }
 
-  /// 拍照/相册按钮
   Widget _buildActionButtons(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -149,7 +140,6 @@ class AvatarPickerScreen extends StatelessWidget {
     );
   }
 
-  /// 预设头像项
   Widget _buildAvatarItem(BuildContext context, int i) {
     final avatar = avatarList[i];
     final isSelected = themeNotifier.avatarName == avatar['name'];
@@ -159,64 +149,63 @@ class AvatarPickerScreen extends StatelessWidget {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('avatar', avatar['name']!);
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? AppColors.celadon : AppColors.glassBorder,
-            width: isSelected ? 2.5 : 1,
+      child: AnimatedScale(
+        scale: isSelected ? 1.08 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? AppColors.celadon : AppColors.glassBorder,
+              width: isSelected ? 2.5 : 1,
+            ),
+            boxShadow: isSelected
+                ? [BoxShadow(color: AppColors.celadon.withOpacity(0.25), blurRadius: 10)]
+                : null,
           ),
-          boxShadow: isSelected
-              ? [BoxShadow(color: AppColors.celadon.withOpacity(0.25), blurRadius: 10)]
-              : null,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(13),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(avatar['path']!, fit: BoxFit.cover),
-              if (isSelected)
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(13),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(avatar['path']!, fit: BoxFit.cover),
+                if (isSelected)
+                  Positioned(
+                    top: 6, right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(color: AppColors.celadon, shape: BoxShape.circle),
+                      child: const Icon(Icons.check, size: 12, color: Colors.white),
+                    ),
+                  ),
                 Positioned(
-                  top: 6, right: 6,
+                  bottom: 0, left: 0, right: 0,
                   child: Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(color: AppColors.celadon, shape: BoxShape.circle),
-                    child: const Icon(Icons.check, size: 12, color: Colors.white),
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    color: Colors.black54,
+                    child: Text(avatar['label']!, textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 11, color: Colors.white, decoration: TextDecoration.none)),
                   ),
                 ),
-              Positioned(
-                bottom: 0, left: 0, right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  color: Colors.black54,
-                  child: Text(avatar['label']!, textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 11, color: Colors.white, decoration: TextDecoration.none)),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  /// 拍照/选相册
   Future<void> _pickImage(BuildContext context, ImageSource source) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: source, maxWidth: 512, maxHeight: 512, imageQuality: 85);
     if (picked == null) return;
-
-    // 保存到应用目录
     final appDir = await getApplicationDocumentsDirectory();
     final fileName = 'custom_avatar${p.extension(picked.path)}';
     final savedFile = await File(picked.path).copy('${appDir.path}/$fileName');
-
-    // 更新状态
     themeNotifier.setAvatar('custom');
     themeNotifier.setCustomAvatarPath(savedFile.path);
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('avatar', 'custom');
     await prefs.setString('customAvatarPath', savedFile.path);

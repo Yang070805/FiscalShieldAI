@@ -105,9 +105,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ]),
                     const SizedBox(height: 16),
                     _section('账号与安全', [
-                      _item(Icons.phone_rounded, '绑定手机号', widget.isGuest ? '未绑定' : '138****0000'),
-                      _item(Icons.link_rounded, '绑定社交账号', '未绑定'),
-                      _item(Icons.lock_rounded, '修改密码', ''),
+                      _item(Icons.phone_rounded, '绑定手机号', widget.isGuest ? '未绑定' : '138****0000', onTap: _showBindPhoneDialog),
+                      _item(Icons.link_rounded, '绑定社交账号', '未绑定', onTap: _showBindSocialDialog),
+                      _item(Icons.lock_rounded, '修改密码', '', onTap: _showChangePasswordDialog),
                     ]),
                     const SizedBox(height: 16),
                     _section('个性化', [
@@ -118,12 +118,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ]),
                     const SizedBox(height: 16),
                     _section('隐私与数据', [
-                      _item(Icons.shield_rounded, '数据脱敏说明', ''),
-                      _item(Icons.delete_outline_rounded, '清除本地缓存', '12.3 MB'),
+                      _item(Icons.shield_rounded, '数据脱敏说明', '', onTap: _showDesensitizationInfo),
+                      _item(Icons.delete_outline_rounded, '清除本地缓存', '', onTap: _showClearCacheDialog),
                     ]),
                     const SizedBox(height: 16),
                     _section('关于', [
-                      _item(Icons.info_outline_rounded, '版本信息', 'v1.0.0'),
+                      _item(Icons.info_outline_rounded, '版本信息', 'v1.0.0', onTap: _showVersionInfo),
                     ]),
                     const SizedBox(height: 32),
                   ],
@@ -155,9 +155,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _divider() => Divider(height: 1, indent: 48, color: AppColors.glassBorder);
 
-  Widget _item(IconData icon, String label, String trailing) {
+  Widget _item(IconData icon, String label, String trailing, {VoidCallback? onTap}) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap ?? () {},
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(children: [
@@ -444,6 +444,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               return GestureDetector(
                 onTap: () async {
                   themeNotifier.setTheme(type);
+                  AppColors.update(type);
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setString('theme', type.name);
                   if (ctx.mounted) Navigator.pop(ctx);
@@ -486,6 +487,303 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+
+  // ═══ 账号与安全 ═══
+
+  void _showBindPhoneDialog() {
+    final phoneCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.deepBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.glassBorder)),
+        title: Row(children: [
+          Icon(Icons.phone_rounded, color: AppColors.celadon, size: 22),
+          const SizedBox(width: 8),
+          Text('绑定手机号', style: TextStyle(color: AppColors.paper, decoration: TextDecoration.none)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!widget.isGuest) ...[
+              Text('当前绑定：138****0000', style: TextStyle(color: AppColors.paperMid)),
+              const SizedBox(height: 12),
+              Text('更换手机号', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.paper)),
+            ],
+            const SizedBox(height: 8),
+            TextField(
+              controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              style: TextStyle(color: AppColors.paper, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: '输入新手机号',
+                hintStyle: TextStyle(color: AppColors.paperDim.withOpacity(0.5)),
+                filled: true,
+                fillColor: AppColors.glassWhite,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.glassBorder)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('取消', style: TextStyle(color: AppColors.paperDim))),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('手机号绑定（待后端接入）'), backgroundColor: AppColors.sky, duration: Duration(seconds: 2)),
+              );
+            },
+            child: Text('确认', style: TextStyle(color: AppColors.celadon)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBindSocialDialog() {
+    final platforms = [
+      {'name': '微信', 'icon': Icons.chat_rounded, 'color': Color(0xFF07C160)},
+      {'name': 'QQ', 'icon': Icons.chat_bubble_rounded, 'color': Color(0xFF12B7F5)},
+      {'name': '支付宝', 'icon': Icons.account_balance_wallet_rounded, 'color': Color(0xFF1677FF)},
+    ];
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.deepBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.glassBorder)),
+        title: Row(children: [
+          Icon(Icons.link_rounded, color: AppColors.celadon, size: 22),
+          const SizedBox(width: 8),
+          Text('绑定社交账号', style: TextStyle(color: AppColors.paper, decoration: TextDecoration.none)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: platforms.map((p) => Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: (p['color'] as Color).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: Icon(p['icon'] as IconData, color: p['color'] as Color, size: 22),
+              ),
+              title: Text(p['name'] as String, style: TextStyle(color: AppColors.paper, decoration: TextDecoration.none)),
+              subtitle: Text('待接入', style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
+              trailing: Icon(Icons.chevron_right_rounded, color: AppColors.paperDim, size: 20),
+              onTap: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${p['name']}绑定（待后端接入）'), backgroundColor: AppColors.sky, duration: Duration(seconds: 2)),
+                );
+              },
+            ),
+          )).toList(),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('关闭', style: TextStyle(color: AppColors.paperDim))),
+        ],
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final oldPwdCtrl = TextEditingController();
+    final newPwdCtrl = TextEditingController();
+    final confirmPwdCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.deepBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.glassBorder)),
+        title: Row(children: [
+          Icon(Icons.lock_rounded, color: AppColors.celadon, size: 22),
+          const SizedBox(width: 8),
+          Text('修改密码', style: TextStyle(color: AppColors.paper, decoration: TextDecoration.none)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildDialogInput(oldPwdCtrl, '当前密码', obscure: true),
+            const SizedBox(height: 10),
+            _buildDialogInput(newPwdCtrl, '新密码（至少6位）', obscure: true),
+            const SizedBox(height: 10),
+            _buildDialogInput(confirmPwdCtrl, '确认新密码', obscure: true),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('取消', style: TextStyle(color: AppColors.paperDim))),
+          TextButton(
+            onPressed: () {
+              if (newPwdCtrl.text.length < 6) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('密码至少6位'), backgroundColor: AppColors.riskHigh, duration: Duration(seconds: 2)),
+                );
+                return;
+              }
+              if (newPwdCtrl.text != confirmPwdCtrl.text) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('两次密码不一致'), backgroundColor: AppColors.riskHigh, duration: Duration(seconds: 2)),
+                );
+                return;
+              }
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('密码修改（待后端接入）'), backgroundColor: AppColors.celadon, duration: Duration(seconds: 2)),
+              );
+            },
+            child: Text('确认修改', style: TextStyle(color: AppColors.celadon)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDialogInput(TextEditingController ctrl, String hint, {bool obscure = false}) {
+    return TextField(
+      controller: ctrl,
+      obscureText: obscure,
+      style: TextStyle(color: AppColors.paper, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: AppColors.paperDim.withOpacity(0.5)),
+        filled: true,
+        fillColor: AppColors.glassWhite,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.glassBorder)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      ),
+    );
+  }
+
+  // ═══ 隐私与数据 ═══
+
+  void _showDesensitizationInfo() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.deepBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.glassBorder)),
+        title: Row(children: [
+          Icon(Icons.shield_rounded, color: AppColors.celadon, size: 22),
+          const SizedBox(width: 8),
+          Text('数据脱敏说明', style: TextStyle(color: AppColors.paper, decoration: TextDecoration.none)),
+        ]),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _infoSection('什么是数据脱敏？', '将敏感信息（如姓名、手机号、身份证号等）进行替换、遮蔽或加密处理，使其无法直接识别个人身份。'),
+              const SizedBox(height: 12),
+              _infoSection('本平台的脱敏策略', '• 手机号：仅显示前3位和后4位（如 138****0000）\n• 企业名称：公开数据中不包含个人身份信息\n• API Key：本地加密存储，不上传至服务器\n• 预测数据：仅保留统计结果，不含原始数据'),
+              const SizedBox(height: 12),
+              _infoSection('为什么需要脱敏？', '• 保护用户隐私，防止个人信息泄露\n• 满足《个人信息保护法》合规要求\n• 降低数据泄露风险'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('我知道了', style: TextStyle(color: AppColors.celadon))),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoSection(String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+        const SizedBox(height: 4),
+        Text(content, style: TextStyle(fontSize: 12, color: AppColors.paperMid, height: 1.6)),
+      ],
+    );
+  }
+
+  void _showClearCacheDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.deepBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.glassBorder)),
+        title: Row(children: [
+          Icon(Icons.delete_outline_rounded, color: AppColors.riskHigh, size: 22),
+          const SizedBox(width: 8),
+          Text('清除本地缓存', style: TextStyle(color: AppColors.paper, decoration: TextDecoration.none)),
+        ]),
+        content: Text('确定要清除所有本地缓存数据吗？\n\n这将清除：主题设置、字体偏好、LLM配置等\n不会清除账号数据。', style: TextStyle(color: AppColors.paperMid)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('取消', style: TextStyle(color: AppColors.paperDim))),
+          TextButton(
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('theme');
+              await prefs.remove('fontSize');
+              await prefs.remove('fontFamily');
+              await prefs.remove('avatar');
+              await prefs.remove('customAvatarPath');
+              await prefs.remove('llmEnabled');
+              await prefs.remove('llmModel');
+              await prefs.remove('llmApiKey');
+              await prefs.remove('llmEndpoint');
+              themeNotifier.setTheme(ThemeType.inkBlue);
+              AppColors.update(ThemeType.inkBlue);
+              themeNotifier.setFontSize(0);
+              themeNotifier.setFontFamily(0);
+              themeNotifier.setAvatar('bamboo');
+              themeNotifier.setCustomAvatarPath('');
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('缓存已清除'), backgroundColor: AppColors.celadon, duration: Duration(seconds: 2)),
+                );
+              }
+            },
+            child: Text('确认清除', style: TextStyle(color: AppColors.riskHigh)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showVersionInfo() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.deepBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.glassBorder)),
+        title: Row(children: [
+          Icon(Icons.info_outline_rounded, color: AppColors.celadon, size: 22),
+          const SizedBox(width: 8),
+          Text('版本信息', style: TextStyle(color: AppColors.paper, decoration: TextDecoration.none)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _infoSection('当前版本', 'v1.0.0 (Build 1)'),
+            const SizedBox(height: 12),
+            _infoSection('更新日志', 'v1.0.0 (2026-07-02)\n• 三角色差异化仪表盘\n• LLM 聊天面板\n• AI 模型配置\n• 水墨·璃主题系统'),
+            const SizedBox(height: 12),
+            _infoSection('技术栈', 'Flutter 3.44 · Dart · GLSL Shader'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('已是最新版本'), backgroundColor: AppColors.celadon, duration: Duration(seconds: 2)),
+              );
+            },
+            child: Text('检查更新', style: TextStyle(color: AppColors.celadon)),
+          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('关闭', style: TextStyle(color: AppColors.paperDim))),
+        ],
       ),
     );
   }

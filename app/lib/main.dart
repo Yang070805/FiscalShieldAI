@@ -30,6 +30,7 @@ class _FiscalShieldAppState extends State<FiscalShieldApp> {
   void initState() {
     super.initState();
     themeNotifier.addListener(_onThemeChange);
+    AppColors.update(themeNotifier.type);
     _loadTheme();
   }
 

@@ -239,6 +239,7 @@ class _ProfileTabState extends State<ProfileTab> {
                 await prefs.remove('loginPhone');
                 await prefs.remove('loginRole');
                 themeNotifier.setTheme(ThemeType.inkBlue);
+                AppColors.update(ThemeType.inkBlue);
                 themeNotifier.setFontSize(0);
                 themeNotifier.setFontFamily(0);
                 themeNotifier.setAvatar('bamboo');

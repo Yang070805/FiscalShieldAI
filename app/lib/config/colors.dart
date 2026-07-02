@@ -11,6 +11,7 @@ class AppColors {
     final s = schemeMap[type]!;
     celadon = s.primary;
     sky = s.accent;
+    teal = s.textSecondary;
     paper = s.textPrimary;
     paperMid = s.textSecondary;
     paperDim = s.textDim;
@@ -68,7 +69,7 @@ class AppColors {
   static const Color qingdai = Color(0xFF45465E);
   static const Color piaobi = Color(0xFFC0D695);
   static const Color warmApricot = Color(0xFFF29A76);
-  static const Color teal = Color(0xFF6CA8AF);
+  static Color teal = const Color(0xFF6CA8AF);
   static const Color accentLight = Color(0xFFA3BBDB);
   static const Color accent = Color(0xFF6CA8AF);
 
