@@ -1,0 +1,13 @@
+fastapi[standard]
+uvicorn[standard]
+sqlalchemy[asyncio]
+aiosqlite
+python-jose[cryptography]
+passlib[bcrypt]
+python-dotenv
+python-multipart
+loguru
+pydantic
+pydantic-settings
+httpx
+sse-starlette

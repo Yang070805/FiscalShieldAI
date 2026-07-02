@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./fiscal_shield.db
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - BLUELM_API_KEY=${BLUELM_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+      - ./checkpoints:/app/checkpoints
+    restart: unless-stopped
