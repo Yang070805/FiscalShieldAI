@@ -21,15 +21,15 @@ class ProfileTab extends StatelessWidget {
             height: 88,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(colors: [AppColors.celadon, AppColors.sky]),
+              gradient: LinearGradient(colors: [AppColors.celadon, AppColors.sky]),
               boxShadow: [BoxShadow(color: AppColors.celadon.withOpacity(0.3), blurRadius: 24, spreadRadius: 4)],
             ),
             child: const Icon(Icons.person_rounded, size: 44, color: Colors.white),
           ),
           const SizedBox(height: 14),
-          const Text('FiscalShield AI用户', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.paper, decoration: TextDecoration.none)),
+          Text('FiscalShield AI用户', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.paper, decoration: TextDecoration.none)),
           const SizedBox(height: 4),
-          Text('$role · 南京', style: const TextStyle(fontSize: 13, color: AppColors.paperMid)),
+          Text('$role · 南京', style: TextStyle(fontSize: 13, color: AppColors.paperMid)),
           const SizedBox(height: 28),
           // 统计
           Row(
@@ -68,9 +68,9 @@ class ProfileTab extends StatelessWidget {
     return GlassCard(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(children: [
-        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.sky, decoration: TextDecoration.none)),
+        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.sky, decoration: TextDecoration.none)),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.paperDim)),
+        Text(label, style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
       ]),
     );
   }

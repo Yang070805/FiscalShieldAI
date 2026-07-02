@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../config/colors.dart';
+import '../config/theme_schemes.dart';
+import '../config/theme_schemes.dart';  // themeNotifier
 
 /// 水墨世界 — 80% 传统水墨 + 20% 3D
 /// 配色：shuimo-ui 原版五行色
@@ -9,22 +11,21 @@ class InkWorld extends StatefulWidget {
   final bool static; // true 时停止动画（撕开时用）
   const InkWorld({super.key, required this.child, this.static = false});
 
-  /// 墨底层（最深，shuimo-ui 水·冬原色）
+  /// 墨底层（跟随主题配色）
   static Widget inkBase() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF0A0E16),
-            Color(0xFF151D29),
-            Color(0xFF1A2847),
-            Color(0xFF12264F),
-            Color(0xFF0B1018),
-          ],
-        ),
-      ),
+    return Builder(
+      builder: (context) {
+        final s = schemeMap[themeNotifier.type]!;
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [s.bgDeep, s.bgMid, s.bgLight, s.bgMid, s.bgDeep],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -68,21 +69,20 @@ class _InkWorldState extends State<InkWorld> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // 1. 墨底（shuimo-ui 水·冬原色）
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF0A0E16), // 极深
-                Color(0xFF151D29), // 獭见（shuimo-ui 水·阳）
-                Color(0xFF1A2847), // 花青（shuimo-ui 金·秋）
-                Color(0xFF12264F), // 麒麟（shuimo-ui 木·冬）
-                Color(0xFF0B1018), // 回深
-              ],
-            ),
-          ),
+        // 1. 墨底（跟随主题）
+        Builder(
+          builder: (context) {
+            final s = schemeMap[themeNotifier.type]!;
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [s.bgDeep, s.bgMid, s.bgLight, s.bgMid, s.bgDeep],
+                ),
+              ),
+            );
+          },
         ),
 
         // 2. 墨流笔触（shuimo-ui 原色）
@@ -263,34 +263,37 @@ class InkBrushPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // ═══ 发光水墨笔触 ═══
-    // 粗·中·细随机排列，覆盖全屏，流速更快
+    // ═══ 发光水墨笔触（跟随主题）═══
+    final s = schemeMap[themeNotifier.type]!;
+    final p = s.primary;    // 主色
+    final a = s.accent;     // 辅色
+    final t = s.textPrimary; // 文字主色
 
-    // 粗 — 正青（主色光带，上部）
+    // 粗 — 主色（上部）
     _drawStroke(canvas, size, yRatio: 0.12, amp: 0.15, freq: 2.5, speed: 3.0,
-      color: const Color(0xFF6CA8AF), opacity: 0.35, thickness: 0.28, glow: 8.0);
+      color: p, opacity: 0.35, thickness: 0.28, glow: 8.0);
 
-    // 细 — 月白（高光细线，中上）密度×1.15
+    // 细 — 文字主色（中上）密度×1.15
     _drawStroke(canvas, size, yRatio: 0.25, amp: 0.069, freq: 5.0, speed: 6.0,
-      color: const Color(0xFFD4E5EF), opacity: 0.20, thickness: 0.06, glow: 3.0);
+      color: t, opacity: 0.20, thickness: 0.06, glow: 3.0);
 
-    // 中 — 晴山（天蓝，中部偏上）密度×1.1
+    // 中 — 辅色（中部偏上）密度×1.1
     _drawStroke(canvas, size, yRatio: 0.36, amp: 0.11, freq: 3.0, speed: 4.1,
-      color: const Color(0xFFA3BBDB), opacity: 0.28, thickness: 0.16, glow: 6.0);
+      color: a, opacity: 0.28, thickness: 0.16, glow: 6.0);
 
-    // 粗 — 紫苑（紫调，中部）
+    // 粗 — 紫苑固定（中部）
     _drawStroke(canvas, size, yRatio: 0.48, amp: 0.12, freq: 2.2, speed: 2.4,
       color: const Color(0xFF757CBB), opacity: 0.25, thickness: 0.22, glow: 5.0);
 
-    // 细 — 石英（暖色微光，中下）密度×1.15
+    // 细 — 石英固定（中下）密度×1.15
     _drawStroke(canvas, size, yRatio: 0.58, amp: 0.058, freq: 6.0, speed: 6.8,
       color: const Color(0xFFC8B6BB), opacity: 0.15, thickness: 0.05, glow: 2.5);
 
-    // 中 — 正青副线（下部）密度×1.1
+    // 中 — 主色副线（下部）密度×1.1
     _drawStroke(canvas, size, yRatio: 0.70, amp: 0.088, freq: 3.8, speed: 4.8,
-      color: const Color(0xFF6CA8AF), opacity: 0.18, thickness: 0.12, glow: 4.0);
+      color: p, opacity: 0.18, thickness: 0.12, glow: 4.0);
 
-    // 粗 — 晴山副线（底部）
+    // 粗 — 辅色副线（底部）
     _drawStroke(canvas, size, yRatio: 0.83, amp: 0.11, freq: 2.8, speed: 3.4,
       color: const Color(0xFFA3BBDB), opacity: 0.20, thickness: 0.20, glow: 5.0);
   }
@@ -366,25 +369,24 @@ class MistPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // ═══ 发光雾气 ═══
-    // 浅色 + blur 光晕 + 更高 opacity
-    // 覆盖全屏
+    // ═══ 发光雾气（跟随主题）═══
+    final s = schemeMap[themeNotifier.type]!;
 
     _drawCloud(canvas, size,
       cx: 0.2 + sin(time * 0.1) * 0.1, cy: 0.2 + cos(time * 0.08) * 0.05,
-      r: 0.35, opacity: 0.12, color: const Color(0xFFD4E5EF), glow: 30.0); // 月白·上
+      r: 0.35, opacity: 0.12, color: s.textPrimary, glow: 30.0);
 
     _drawCloud(canvas, size,
       cx: 0.7 + cos(time * 0.07) * 0.12, cy: 0.45 + sin(time * 0.06) * 0.06,
-      r: 0.4, opacity: 0.10, color: const Color(0xFFA3BBDB), glow: 25.0); // 晴山·中
+      r: 0.4, opacity: 0.10, color: s.accent, glow: 25.0);
 
     _drawCloud(canvas, size,
       cx: 0.5 + sin(time * 0.09) * 0.08, cy: 0.7 + cos(time * 0.05) * 0.04,
-      r: 0.3, opacity: 0.09, color: const Color(0xFF6CA8AF), glow: 20.0); // 正青·下
+      r: 0.3, opacity: 0.09, color: s.primary, glow: 20.0);
 
     _drawCloud(canvas, size,
       cx: 0.3 + cos(time * 0.06) * 0.1, cy: 0.88 + sin(time * 0.04) * 0.03,
-      r: 0.25, opacity: 0.07, color: const Color(0xFF757CBB), glow: 15.0); // 紫苑·底
+      r: 0.25, opacity: 0.07, color: const Color(0xFF757CBB), glow: 15.0);
   }
 
   void _drawCloud(Canvas canvas, Size size, {

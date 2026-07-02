@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/colors.dart';
-import '../config/fonts.dart';
+
 import '../models/prediction.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_widgets.dart';
@@ -107,7 +107,7 @@ class _DashboardTabState extends State<DashboardTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.paperDim)),
+        Text(label, style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -121,7 +121,7 @@ class _DashboardTabState extends State<DashboardTab> {
             isExpanded: true,
             dropdownColor: AppColors.cardBg,
             underline: const SizedBox(),
-            style: const TextStyle(color: AppColors.paper, fontSize: 14),
+            style: TextStyle(color: AppColors.paper, fontSize: 14),
             items: items.map((e) => DropdownMenuItem(value: e, child: Text(text(e)))).toList(),
             onChanged: onChanged,
           ),
@@ -221,9 +221,9 @@ class _DashboardTabState extends State<DashboardTab> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       child: Row(children: [
-        Expanded(flex: 3, child: Text(limit.name, style: const TextStyle(fontSize: 13, color: AppColors.paper))),
+        Expanded(flex: 3, child: Text(limit.name, style: TextStyle(fontSize: 13, color: AppColors.paper))),
         Expanded(flex: 2, child: Text(value != null ? '${value.toStringAsFixed(1)}${limit.unit}' : '--', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: value != null ? AppColors.paper : AppColors.paperDim))),
-        Expanded(flex: 2, child: Text(limit.lowerIsBetter ? '<${limit.limit}${limit.unit}' : '>${limit.limit}${limit.unit}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.paperDim))),
+        Expanded(flex: 2, child: Text(limit.lowerIsBetter ? '<${limit.limit}${limit.unit}' : '>${limit.limit}${limit.unit}', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.paperDim))),
         Expanded(flex: 2, child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(color: sc.withOpacity(0.12), borderRadius: BorderRadius.circular(6)),
@@ -251,7 +251,7 @@ class _DashboardTabState extends State<DashboardTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('指标概览', style: TextStyle(fontFamily: 'STKaiti', fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+          Text('指标概览', style: TextStyle(fontFamily: 'STKaiti', fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
           const SizedBox(height: 12),
           Center(child: InkBarChart(data: bars, maxWidth: MediaQuery.of(context).size.width - 80, maxHeight: 200)),
         ],
@@ -266,11 +266,11 @@ class _DashboardTabState extends State<DashboardTab> {
       child: GlassCard(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(children: [
-          const Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.sky),
+          Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.sky),
           const SizedBox(width: 8),
-          const Text('AI 分析报告', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+          Text('AI 分析报告', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
           const Spacer(),
-          AnimatedRotation(turns: _showReport ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.expand_more_rounded, color: AppColors.paperDim)),
+          AnimatedRotation(turns: _showReport ? 0.5 : 0, duration: Duration(milliseconds: 200), child: Icon(Icons.expand_more_rounded, color: AppColors.paperDim)),
         ]),
       ),
     );
@@ -284,9 +284,9 @@ class _DashboardTabState extends State<DashboardTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Icon(Icons.auto_awesome_rounded, size: 14, color: AppColors.sky),
+            Icon(Icons.auto_awesome_rounded, size: 14, color: AppColors.sky),
             const SizedBox(width: 6),
-            const Text('由蓝心大模型生成', style: TextStyle(fontSize: 11, color: AppColors.sky)),
+            Text('由蓝心大模型生成', style: TextStyle(fontSize: 11, color: AppColors.sky)),
           ]),
           const SizedBox(height: 12),
           ..._parseReport(report),
@@ -302,18 +302,18 @@ class _DashboardTabState extends State<DashboardTab> {
       if (line.trim().isEmpty) {
         widgets.add(const SizedBox(height: 6));
       } else if (line.startsWith('## ')) {
-        widgets.add(Padding(padding: const EdgeInsets.only(top: 10, bottom: 4), child: Text(line.substring(3), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.paper, decoration: TextDecoration.none))));
+        widgets.add(Padding(padding: EdgeInsets.only(top: 10, bottom: 4), child: Text(line.substring(3), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.paper, decoration: TextDecoration.none))));
       } else if (line.startsWith('### ')) {
-        widgets.add(Padding(padding: const EdgeInsets.only(top: 8, bottom: 3), child: Text(line.substring(4), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none))));
+        widgets.add(Padding(padding: EdgeInsets.only(top: 8, bottom: 3), child: Text(line.substring(4), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none))));
       } else if (line.startsWith('- ') || line.startsWith('* ')) {
         widgets.add(Padding(padding: const EdgeInsets.only(left: 8, top: 2, bottom: 2), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('•  ', style: TextStyle(color: AppColors.sky)),
+          Text('•  ', style: TextStyle(color: AppColors.sky)),
           Expanded(child: _richText(line.substring(2))),
         ])));
       } else if (RegExp(r'^\d+\.').hasMatch(line)) {
         final m = RegExp(r'^(\d+\.)\s*(.*)').firstMatch(line);
         if (m != null) widgets.add(Padding(padding: const EdgeInsets.only(left: 8, top: 2, bottom: 2), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${m.group(1)} ', style: const TextStyle(color: AppColors.sky, fontWeight: FontWeight.bold)),
+          Text('${m.group(1)} ', style: TextStyle(color: AppColors.sky, fontWeight: FontWeight.bold)),
           Expanded(child: _richText(m.group(2)!)),
         ])));
       } else {
@@ -328,11 +328,11 @@ class _DashboardTabState extends State<DashboardTab> {
     final regex = RegExp(r'\*\*(.*?)\*\*');
     int last = 0;
     for (final m in regex.allMatches(text)) {
-      if (m.start > last) spans.add(TextSpan(text: text.substring(last, m.start), style: const TextStyle(fontSize: 13, color: AppColors.paperMid, height: 1.6)));
-      spans.add(TextSpan(text: m.group(1), style: const TextStyle(fontSize: 13, color: AppColors.paper, fontWeight: FontWeight.bold, height: 1.6)));
+      if (m.start > last) spans.add(TextSpan(text: text.substring(last, m.start), style: TextStyle(fontSize: 13, color: AppColors.paperMid, height: 1.6)));
+      spans.add(TextSpan(text: m.group(1), style: TextStyle(fontSize: 13, color: AppColors.paper, fontWeight: FontWeight.bold, height: 1.6)));
       last = m.end;
     }
-    if (last < text.length) spans.add(TextSpan(text: text.substring(last), style: const TextStyle(fontSize: 13, color: AppColors.paperMid, height: 1.6)));
+    if (last < text.length) spans.add(TextSpan(text: text.substring(last), style: TextStyle(fontSize: 13, color: AppColors.paperMid, height: 1.6)));
     return RichText(text: TextSpan(children: spans));
   }
 
@@ -341,9 +341,9 @@ class _DashboardTabState extends State<DashboardTab> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: AppColors.riskHigh.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.riskHigh.withOpacity(0.25))),
       child: Row(children: [
-        const Icon(Icons.error_outline_rounded, color: AppColors.riskHigh, size: 18),
+        Icon(Icons.error_outline_rounded, color: AppColors.riskHigh, size: 18),
         const SizedBox(width: 8),
-        Expanded(child: Text(_error!, style: const TextStyle(color: AppColors.riskHigh, fontSize: 13))),
+        Expanded(child: Text(_error!, style: TextStyle(color: AppColors.riskHigh, fontSize: 13))),
       ]),
     );
   }
@@ -351,7 +351,7 @@ class _DashboardTabState extends State<DashboardTab> {
   Widget _buildPerf() {
     final p = _result!.performance!;
     return Center(
-      child: Text('推理 ${p.inferenceTimeMs.toStringAsFixed(1)}ms · ${p.device.toUpperCase()}', style: const TextStyle(fontSize: 11, color: AppColors.paperDim)),
+      child: Text('推理 ${p.inferenceTimeMs.toStringAsFixed(1)}ms · ${p.device.toUpperCase()}', style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
     );
   }
 }

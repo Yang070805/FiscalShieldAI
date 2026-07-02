@@ -198,7 +198,7 @@ class RiskCard extends StatelessWidget {
     required this.color,
   });
 
-  const RiskCard.empty({super.key, required this.title})
+  RiskCard.empty({super.key, required this.title})
       : level = '--',
         confidence = 0,
         color = AppColors.paperDim;

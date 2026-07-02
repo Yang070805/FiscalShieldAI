@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               // 标题
-              const Text('FiscalShield AI', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.paper, letterSpacing: 4, decoration: TextDecoration.none)),
+              Text('FiscalShield AI', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.paper, letterSpacing: 4, decoration: TextDecoration.none)),
               const SizedBox(height: 6),
               Text('地方财政风险智能预警系统', style: AppFonts.headingSmall),
               const SizedBox(height: 40),
@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 角色选择
-                    const Text('选择版本', style: TextStyle(fontFamily: 'STKaiti', fontSize: 14, color: AppColors.paperDim, decoration: TextDecoration.none)),
+                    Text('选择版本', style: TextStyle(fontFamily: 'STKaiti', fontSize: 14, color: AppColors.paperDim, decoration: TextDecoration.none)),
                     const SizedBox(height: 12),
                     Row(
                       children: _roles.map((r) => Expanded(child: _buildRoleChip(r))).toList(),
@@ -194,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
       controller: c,
       keyboardType: type,
       obscureText: obscure,
-      style: const TextStyle(color: AppColors.paper, fontSize: 14),
+      style: TextStyle(color: AppColors.paper, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, size: 20, color: AppColors.paperDim),

@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../config/colors.dart';
-import '../config/fonts.dart';
+
 import '../widgets/ink_world.dart';
 import 'login_screen.dart';
 
