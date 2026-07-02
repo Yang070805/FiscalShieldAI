@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../config/colors.dart';
-
 import '../models/prediction.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_widgets.dart';
 import '../widgets/ink_bar_chart.dart';
+import 'chat_panel.dart';
 
-/// 仪表盘 — 预测 + 风险卡片 + 指标表 + AI 报告
+/// 仪表盘 — 三角色差异化 + LLM 聊天面板
 class DashboardTab extends StatefulWidget {
   final String role;
   final bool isGuest;
@@ -18,15 +18,25 @@ class DashboardTab extends StatefulWidget {
 
 class _DashboardTabState extends State<DashboardTab> {
   final ApiService _api = ApiService();
+
+  // ── 政务版状态 ──
   String _city = '南京';
   int _year = 2026;
   bool _loading = false;
   bool _showReport = false;
   PredictionResult? _result;
   String? _error;
-
   final List<String> _cities = ['南京', '苏州', '无锡', '常州', '镇江'];
   final List<int> _years = [2026, 2025, 2024, 2023];
+
+  // ── 企业版状态 ──
+  String? _company;
+  String? _period;
+  final List<String> _companies = [];
+  final List<String> _periods = [];
+
+  // ── 民用版状态 ──
+  String _searchQuery = '';
 
   Future<void> _predict() async {
     setState(() { _loading = true; _error = null; _result = null; });
@@ -44,73 +54,47 @@ class _DashboardTabState extends State<DashboardTab> {
 
   @override
   Widget build(BuildContext context) {
-    final isCivilian = widget.role == '民用版';
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── 顶部标题 ──
-          _buildSectionTitle(),
-          const SizedBox(height: 16),
-
-          if (!isCivilian) ...[
-            // 政务版/企业版：功能差异化
-            _buildInputCard(),
-            const SizedBox(height: 16),
-            // 政务版专属：数据上传入口
-            if (widget.role == '政务版') ...[
-              _buildUploadEntry(),
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle(),
               const SizedBox(height: 16),
+              if (widget.role == '政务版') _buildGovView(),
+              if (widget.role == '企业版') _buildEnterpriseView(),
+              if (widget.role == '民用版') _buildCivilianView(),
+              if (_error != null) ...[const SizedBox(height: 16), _buildError()],
+              const SizedBox(height: 80), // 给悬浮按钮留空间
             ],
-            if (_result != null) _buildWarningBanner(),
-            if (_result != null) const SizedBox(height: 16),
-            _buildRiskCards(),
-            const SizedBox(height: 16),
-            if (_result != null) _buildMetricsTable(),
-            if (_result != null) const SizedBox(height: 16),
-            if (_result != null) _buildBarChart(),
-            if (_result != null) const SizedBox(height: 16),
-            _buildReportToggle(),
-            if (_showReport && _result?.aiReport != null) ...[
-              const SizedBox(height: 8),
-              _buildReportContent(),
-            ],
-            // 企业版专属：快捷分析
-            if (widget.role == '企业版') ...[
-              const SizedBox(height: 16),
-              _buildQuickAnalysis(),
-            ],
-          ] else ...[
-            // 民用版：只读公开数据
-            _buildCivilianView(),
-          ],
-
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            _buildError(),
-          ],
-          if (_result?.performance != null) ...[
-            const SizedBox(height: 8),
-            _buildPerf(),
-          ],
-          const SizedBox(height: 24),
-        ],
-      ),
+          ),
+        ),
+        // ── LLM 聊天悬浮按钮 ──
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: _buildChatFab(),
+        ),
+      ],
     );
   }
 
-  /// 顶部标题（角色差异化）
+  // ══════════════════════════════════════════════════════
+  // 通用组件
+  // ══════════════════════════════════════════════════════
+
   Widget _buildSectionTitle() {
     final titles = {
       '政务版': '财政风险监测中心',
       '企业版': '企业风险分析平台',
-      '民用版': '公共财政数据查询',
+      '民用版': '公共数据查询',
     };
     final subtitles = {
       '政务版': '实时监控 · 智能预警 · 合规报告',
       '企业版': '风险评估 · 趋势分析 · 决策支持',
-      '民用版': '公开数据 · 简单查询 · 透明监督',
+      '民用版': '城市 & 企业公开数据 · 透明监督',
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,193 +108,99 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
-  /// 政务版专属：数据上传入口
-  Widget _buildUploadEntry() {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      glow: true,
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.celadon.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(Icons.cloud_upload_rounded, color: AppColors.celadon, size: 24),
+  Widget _buildChatFab() {
+    return GestureDetector(
+      onTap: () => _showChatPanel(),
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.celadon, AppColors.sky],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('数据上报', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
-                const SizedBox(height: 2),
-                Text('上传财政数据用于模型训练', style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
-              ],
-            ),
-          ),
-          Icon(Icons.chevron_right_rounded, color: AppColors.paperDim, size: 20),
-        ],
+          boxShadow: [
+            BoxShadow(color: AppColors.celadon.withOpacity(0.3), blurRadius: 16, spreadRadius: 2),
+          ],
+        ),
+        child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 24),
       ),
     );
   }
 
-  /// 企业版专属：快捷分析入口
-  Widget _buildQuickAnalysis() {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('快捷分析', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _quickBtn(Icons.show_chart_rounded, '趋势分析', AppColors.celadon),
-              const SizedBox(width: 10),
-              _quickBtn(Icons.compare_arrows_rounded, '对标分析', AppColors.sky),
-              const SizedBox(width: 10),
-              _quickBtn(Icons.assessment_rounded, '风险评估', AppColors.riskMedium),
-            ],
-          ),
-        ],
+  void _showChatPanel() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ChatPanel(
+        role: widget.role,
+        contextCity: widget.role != '企业版' ? _city : null,
+        contextCompany: widget.role == '企业版' ? _company : null,
       ),
     );
   }
 
-  Widget _quickBtn(IconData icon, String label, Color color) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withOpacity(0.2)),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, size: 22, color: color),
-              const SizedBox(height: 6),
-              Text(label, style: TextStyle(fontSize: 12, color: color, decoration: TextDecoration.none)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 民用版只读视图
-  Widget _buildCivilianView() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 搜索框
-        GlassCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Icon(Icons.search_rounded, color: AppColors.paperDim, size: 20),
-              const SizedBox(width: 10),
-              Expanded(child: Text('搜索城市、指标...', style: TextStyle(color: AppColors.paperDim, fontSize: 14))),
-              Icon(Icons.mic_rounded, color: AppColors.paperDim, size: 20),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // 热门城市
-        Text('热门城市', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
-        const SizedBox(height: 12),
-        _buildCityCards(),
-        const SizedBox(height: 20),
-
-        // 公开数据概览
-        Text('公开数据概览', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
-        const SizedBox(height: 12),
-        _buildPublicDataCards(),
-      ],
-    );
-  }
-
-  Widget _buildCityCards() {
-    final cities = [
-      {'name': '南京', 'risk': '中等', 'color': AppColors.riskMedium},
-      {'name': '苏州', 'risk': '低', 'color': AppColors.riskLow},
-      {'name': '无锡', 'risk': '低', 'color': AppColors.riskLow},
-      {'name': '常州', 'risk': '中等偏高', 'color': AppColors.riskHigh},
-    ];
-    return Row(
-      children: cities.map((c) => Expanded(
-        child: GlassCard(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-          child: Column(
-            children: [
-              Text(c['name'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: (c['color'] as Color).withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-                child: Text(c['risk'] as String, style: TextStyle(fontSize: 11, color: c['color'] as Color)),
-              ),
-            ],
-          ),
-        ),
-      )).toList(),
-    );
-  }
-
-  Widget _buildPublicDataCards() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _publicDataRow('GDP增速', '5.2%', '↑', AppColors.riskLow, '南京市统计局 2025年公报'),
-        _publicDataRow('财政收入', '1,234亿', '↑', AppColors.riskLow, '南京市财政局 2025年度报告'),
-        _publicDataRow('债务率', '23.5%', '↓', AppColors.riskMedium, '财政部地方债监测数据'),
-        _publicDataRow('赤字率', '3.1%', '→', AppColors.riskLow, '南京市财政局 2025年度报告'),
-      ],
-    );
-  }
-
-  Widget _publicDataRow(String label, String value, String trend, Color trendColor, String source) {
+  Widget _buildError() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.glassWhite,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.glassBorder),
+        color: AppColors.riskHigh.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.riskHigh.withOpacity(0.25)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(label, style: TextStyle(fontSize: 14, color: AppColors.paper)),
-              const Spacer(),
-              Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
-              const SizedBox(width: 8),
-              Text(trend, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: trendColor)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.info_outline_rounded, size: 11, color: AppColors.paperDim),
-              const SizedBox(width: 4),
-              Expanded(child: Text(source, style: TextStyle(fontSize: 10, color: AppColors.paperDim), maxLines: 1, overflow: TextOverflow.ellipsis)),
-            ],
-          ),
-        ],
-      ),
+      child: Row(children: [
+        Icon(Icons.error_outline_rounded, color: AppColors.riskHigh, size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text(_error!, style: TextStyle(color: AppColors.riskHigh, fontSize: 13))),
+      ]),
     );
   }
 
-  // ── 输入区 ──
-  Widget _buildInputCard() {
+  // ══════════════════════════════════════════════════════
+  // 政务版 — 城市财政风险监测
+  // ══════════════════════════════════════════════════════
+
+  Widget _buildGovView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 输入区：城市 + 年份 + 预测按钮
+        _buildGovInputCard(),
+        const SizedBox(height: 16),
+        // 数据上报入口
+        _buildUploadEntry(),
+        const SizedBox(height: 16),
+        // 有结果时：展示完整分析
+        if (_result != null) ...[
+          _buildWarningBanner(),
+          const SizedBox(height: 12),
+          _buildGovRiskCards(),
+          const SizedBox(height: 16),
+          _buildMetricsTable(),
+          const SizedBox(height: 16),
+          _buildBarChart(),
+          const SizedBox(height: 16),
+          _buildReportToggle(),
+          if (_showReport && _result?.aiReport != null) ...[
+            const SizedBox(height: 8),
+            _buildReportContent(),
+          ],
+        ] else ...[
+          // 无结果时：空状态引导
+          _buildEmptyState(
+            icon: Icons.analytics_rounded,
+            title: '暂无预测数据',
+            subtitle: '选择城市和年份，点击「预测」按钮开始分析',
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildGovInputCard() {
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -332,6 +222,239 @@ class _DashboardTabState extends State<DashboardTab> {
       ),
     );
   }
+
+  Widget _buildUploadEntry() {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      glow: true,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.celadon.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.cloud_upload_rounded, color: AppColors.celadon, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('数据上报', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+                const SizedBox(height: 2),
+                Text('上传财政数据，可选择公开或仅内部使用', style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: AppColors.paperDim, size: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGovRiskCards() {
+    if (_result == null) {
+      return Row(children: [
+        Expanded(child: RiskCard.empty(title: '财政风险')),
+        const SizedBox(width: 8),
+        Expanded(child: RiskCard.empty(title: '金融风险')),
+        const SizedBox(width: 8),
+        Expanded(child: RiskCard.empty(title: '综合风险')),
+      ]);
+    }
+    return Row(children: [
+      Expanded(child: RiskCard(title: '财政风险', level: _result!.fiscalRisk.level, confidence: _result!.fiscalRisk.confidencePercent, color: AppColors.riskColor(_result!.fiscalRisk.level))),
+      const SizedBox(width: 8),
+      Expanded(child: RiskCard(title: '金融风险', level: _result!.financeRisk.level, confidence: _result!.financeRisk.confidencePercent, color: AppColors.riskColor(_result!.financeRisk.level))),
+      const SizedBox(width: 8),
+      Expanded(child: RiskCard(title: '综合风险', level: _result!.overallRisk.level, confidence: _result!.overallRisk.confidencePercent, color: AppColors.riskColor(_result!.overallRisk.level))),
+    ]);
+  }
+
+  // ══════════════════════════════════════════════════════
+  // 企业版 — 企业财务风险分析
+  // ══════════════════════════════════════════════════════
+
+  Widget _buildEnterpriseView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 输入区：企业名 + 分析周期
+        _buildEnterpriseInputCard(),
+        const SizedBox(height: 16),
+        // 数据上传入口
+        _buildEnterpriseUploadEntry(),
+        const SizedBox(height: 16),
+        // 空状态引导
+        _buildEmptyState(
+          icon: Icons.business_rounded,
+          title: '暂无企业数据',
+          subtitle: '请先上传企业财报，系统将自动分析财务健康度',
+          actionLabel: '上传财报',
+          onAction: () {},
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnterpriseInputCard() {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: _companies.isEmpty
+          ? Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.business_rounded, size: 20, color: AppColors.paperDim),
+                    const SizedBox(width: 10),
+                    Text('请先上传企业财报', style: TextStyle(fontSize: 14, color: AppColors.paperDim)),
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(child: _dropdown<String>('企业', _company ?? _companies.first, _companies, (v) => setState(() => _company = v), (v) => v)),
+                const SizedBox(width: 12),
+                Expanded(child: _dropdown<String>('周期', _period ?? _periods.first, _periods, (v) => setState(() => _period = v), (v) => v)),
+                const SizedBox(width: 12),
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    child: const Text('分析', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildEnterpriseUploadEntry() {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      glow: true,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.sky.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.upload_file_rounded, color: AppColors.sky, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('上传企业财报', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+                const SizedBox(height: 2),
+                Text('支持 Excel / PDF，自动提取关键指标', style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: AppColors.paperDim, size: 20),
+        ],
+      ),
+    );
+  }
+
+
+
+  // ══════════════════════════════════════════════════════
+  // 民用版 — 公共数据查询（城市 + 企业）
+  // ══════════════════════════════════════════════════════
+
+  Widget _buildCivilianView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 搜索框
+        _buildSearchBox(),
+        const SizedBox(height: 20),
+        // 空状态引导
+        _buildEmptyState(
+          icon: Icons.public_rounded,
+          title: '暂无公开数据',
+          subtitle: '政务端和企业端上传数据并选择公开后，将在此展示',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBox() {
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(Icons.search_rounded, color: AppColors.paperDim, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              onChanged: (v) => setState(() => _searchQuery = v),
+              style: TextStyle(color: AppColors.paper, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: '搜索城市、企业、指标...',
+                hintStyle: TextStyle(color: AppColors.paperDim.withOpacity(0.6)),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+          Icon(Icons.mic_rounded, color: AppColors.paperDim, size: 20),
+        ],
+      ),
+    );
+  }
+
+
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.celadon.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 36, color: AppColors.celadon.withOpacity(0.5)),
+            ),
+            const SizedBox(height: 16),
+            Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+            const SizedBox(height: 8),
+            Text(subtitle, style: TextStyle(fontSize: 13, color: AppColors.paperDim), textAlign: TextAlign.center),
+            if (actionLabel != null) ...[
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: onAction,
+                child: Text(actionLabel),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════
+  // 通用组件（下拉框、图表、报告）
+  // ══════════════════════════════════════════════════════
 
   Widget _dropdown<T>(String label, T value, List<T> items, ValueChanged<T?> onChanged, String Function(T) text) {
     return Column(
@@ -360,7 +483,6 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
-  // ── 预警横幅 ──
   Widget _buildWarningBanner() {
     final w = _result!.warning;
     final c = AppColors.sky;
@@ -389,33 +511,11 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
-  // ── 风险卡片 ──
-  Widget _buildRiskCards() {
-    if (_result == null) {
-      return Row(children: [
-        Expanded(child: RiskCard.empty(title: '财政风险')),
-        const SizedBox(width: 8),
-        Expanded(child: RiskCard.empty(title: '金融风险')),
-        const SizedBox(width: 8),
-        Expanded(child: RiskCard.empty(title: '综合风险')),
-      ]);
-    }
-    return Row(children: [
-      Expanded(child: RiskCard(title: '财政风险', level: _result!.fiscalRisk.level, confidence: _result!.fiscalRisk.confidencePercent, color: AppColors.riskColor(_result!.fiscalRisk.level))),
-      const SizedBox(width: 8),
-      Expanded(child: RiskCard(title: '金融风险', level: _result!.financeRisk.level, confidence: _result!.financeRisk.confidencePercent, color: AppColors.riskColor(_result!.financeRisk.level))),
-      const SizedBox(width: 8),
-      Expanded(child: RiskCard(title: '综合风险', level: _result!.overallRisk.level, confidence: _result!.overallRisk.confidencePercent, color: AppColors.riskColor(_result!.overallRisk.level))),
-    ]);
-  }
-
-  // ── 指标表 ──
   Widget _buildMetricsTable() {
     return GlassCard(
       padding: EdgeInsets.zero,
       child: Column(
         children: [
-          // 表头
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(children: [
@@ -447,7 +547,6 @@ class _DashboardTabState extends State<DashboardTab> {
     } else {
       safe = value > limit.limit; status = safe ? '正常' : '偏低'; sc = safe ? AppColors.riskLow : AppColors.warmApricot;
     }
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       child: Row(children: [
@@ -463,7 +562,6 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
-  // ── 3D 柱形图 ──
   Widget _buildBarChart() {
     final metrics = _result!.metrics;
     final colors = [AppColors.zhengqing, AppColors.qingshan, AppColors.ziyan, AppColors.zhuyantuo, AppColors.piaobi, AppColors.celadon, AppColors.wozhe, AppColors.daran, AppColors.qingdai];
@@ -489,8 +587,8 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
-  // ── AI 报告 ──
   Widget _buildReportToggle() {
+    if (_result == null) return const SizedBox();
     return GestureDetector(
       onTap: () => setState(() => _showReport = !_showReport),
       child: GlassCard(
@@ -564,24 +662,5 @@ class _DashboardTabState extends State<DashboardTab> {
     }
     if (last < text.length) spans.add(TextSpan(text: text.substring(last), style: TextStyle(fontSize: 13, color: AppColors.paperMid, height: 1.6)));
     return RichText(text: TextSpan(children: spans));
-  }
-
-  Widget _buildError() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.riskHigh.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.riskHigh.withOpacity(0.25))),
-      child: Row(children: [
-        Icon(Icons.error_outline_rounded, color: AppColors.riskHigh, size: 18),
-        const SizedBox(width: 8),
-        Expanded(child: Text(_error!, style: TextStyle(color: AppColors.riskHigh, fontSize: 13))),
-      ]),
-    );
-  }
-
-  Widget _buildPerf() {
-    final p = _result!.performance!;
-    return Center(
-      child: Text('推理 ${p.inferenceTimeMs.toStringAsFixed(1)}ms · ${p.device.toUpperCase()}', style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
-    );
   }
 }

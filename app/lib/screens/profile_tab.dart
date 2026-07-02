@@ -123,7 +123,6 @@ class _ProfileTabState extends State<ProfileTab> {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.remove('loginPhone');
                 await prefs.remove('loginRole');
-                await prefs.remove('users');
                 themeNotifier.setTheme(ThemeType.inkBlue);
                 themeNotifier.setFontSize(0);
                 themeNotifier.setFontFamily(0);
