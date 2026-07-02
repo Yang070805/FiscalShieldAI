@@ -54,7 +54,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
           const Spacer(),
           _headerBtn(Icons.settings_rounded, () {
-            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsScreen(isGuest: widget.isGuest)));
           }),
         ],
       ),
@@ -82,7 +82,7 @@ class _MainScreenState extends State<MainScreen> {
       case 0:
         return DashboardTab(role: widget.role, isGuest: widget.isGuest);
       case 1:
-        return ProfileTab(role: widget.role);
+        return ProfileTab(role: widget.role, isGuest: widget.isGuest);
       default:
         return DashboardTab(role: widget.role, isGuest: widget.isGuest);
     }

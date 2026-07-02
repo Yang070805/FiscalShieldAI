@@ -25,6 +25,41 @@ flutter:
     - shaders/
 
   fonts:
+    # 思源真黑 — 现代黑体
+    - family: SourceHanSans
+      fonts:
+        - asset: assets/fonts/SourceHanSans-Regular.ttf
+        - asset: assets/fonts/SourceHanSans-Bold.ttf
+          weight: 700
+    # 思源宋体 — 宋体风格
+    - family: SourceHanSerif
+      fonts:
+        - asset: assets/fonts/SourceHanSerif-Regular.ttf
+    # 得意黑 — 活泼黑体
+    - family: SmileySans
+      fonts:
+        - asset: assets/fonts/SmileySans-Regular.ttf
+    # 霞鹜文楷 — 现代楷书
+    - family: LXGWWenKai
+      fonts:
+        - asset: assets/fonts/LXGWWenKai-Regular.ttf
+    # 小米MiSans — 小米字体
+    - family: MiSans
+      fonts:
+        - asset: assets/fonts/MiSans-Regular.ttf
+    # 阿里巴巴普惠体
+    - family: AlibabaPuHuiTi
+      fonts:
+        - asset: assets/fonts/AlibabaPuHuiTi-Regular.ttf
+    # 庞门正道标题体
+    - family: PangMenBiaoDaoTi
+      fonts:
+        - asset: assets/fonts/PangMenBiaoDaoTi.ttf
+    # 站酷高端黑
+    - family: ZhanKuGaoDuanHei
+      fonts:
+        - asset: assets/fonts/ZhanKuGaoDuanHei.ttf
+
     # 行书 — 品牌中文名
     - family: STXingkai
       fonts:

@@ -9,8 +9,52 @@ class ThemeNotifier extends ChangeNotifier {
   ThemeType _type = ThemeType.inkBlue;
   ThemeType get type => _type;
 
+  // 字体大小：0=标准, 1=中号, 2=大号
+  int _fontSizeLevel = 0;
+  int get fontSizeLevel => _fontSizeLevel;
+
+  // 字体：0=系统默认, 1~9 各字体
+  int _fontFamilyLevel = 0;
+  int get fontFamilyLevel => _fontFamilyLevel;
+  String get fontFamily {
+    const fonts = ['', 'SourceHanSans', 'SourceHanSerif', 'SmileySans',
+      'LXGWWenKai', 'MiSans', 'AlibabaPuHuiTi', 'PangMenBiaoDaoTi',
+      'ZhanKuGaoDuanHei', 'STKaiti'];
+    return fonts[_fontFamilyLevel.clamp(0, 9)];
+  }
+  String get fontFamilyLabel {
+    const labels = ['系统默认', '思源真黑', '思源宋体', '得意黑',
+      '霞鹜文楷', '小米MiSans', '阿里巴巴普惠体', '庞门正道标题体',
+      '站酷高端黑', '楷书'];
+    return labels[_fontFamilyLevel.clamp(0, 9)];
+  }
+  double get textScale {
+    switch (_fontSizeLevel) {
+      case 1: return 1.15;
+      case 2: return 1.30;
+      default: return 1.0;
+    }
+  }
+  String get fontSizeLabel {
+    switch (_fontSizeLevel) {
+      case 1: return '中号';
+      case 2: return '大号';
+      default: return '标准';
+    }
+  }
+
   void setTheme(ThemeType type) {
     _type = type;
+    notifyListeners();
+  }
+
+  void setFontSize(int level) {
+    _fontSizeLevel = level.clamp(0, 2);
+    notifyListeners();
+  }
+
+  void setFontFamily(int level) {
+    _fontFamilyLevel = level.clamp(0, 9);
     notifyListeners();
   }
 }

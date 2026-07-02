@@ -41,6 +41,10 @@ class _FiscalShieldAppState extends State<FiscalShieldApp> {
       orElse: () => ThemeType.inkBlue,
     );
     themeNotifier.setTheme(type);
+    final savedFontSize = prefs.getInt('fontSize') ?? 0;
+    themeNotifier.setFontSize(savedFontSize);
+    final savedFontFamily = prefs.getInt('fontFamily') ?? 0;
+    themeNotifier.setFontFamily(savedFontFamily);
   }
 
   void _onThemeChange() {
@@ -56,9 +60,14 @@ class _FiscalShieldAppState extends State<FiscalShieldApp> {
 
   @override
   Widget build(BuildContext context) {
+    final ff = themeNotifier.fontFamily;
     return DefaultTextStyle(
-      style: const TextStyle(decoration: TextDecoration.none),
-      child: MaterialApp(
+      style: TextStyle(decoration: TextDecoration.none, fontFamily: ff.isEmpty ? null : ff),
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(themeNotifier.textScale),
+        ),
+        child: MaterialApp(
         title: 'FiscalShield AI',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
@@ -67,6 +76,7 @@ class _FiscalShieldAppState extends State<FiscalShieldApp> {
           '/login': (_) => const LoginScreen(),
           '/main': (_) => const MainScreen(role: '政务版'),
         },
+        ),
       ),
     );
   }

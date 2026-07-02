@@ -6,7 +6,8 @@ import 'settings_screen.dart';
 /// 个人中心
 class ProfileTab extends StatelessWidget {
   final String role;
-  const ProfileTab({super.key, required this.role});
+  final bool isGuest;
+  const ProfileTab({super.key, required this.role, this.isGuest = false});
 
   @override
   Widget build(BuildContext context) {
@@ -34,11 +35,11 @@ class ProfileTab extends StatelessWidget {
           // 统计
           Row(
             children: [
-              Expanded(child: _statCard('预测次数', '12')),
+              Expanded(child: _statCard('预测次数', '0')),
               const SizedBox(width: 10),
-              Expanded(child: _statCard('收藏数', '5')),
+              Expanded(child: _statCard('收藏数', '0')),
               const SizedBox(width: 10),
-              Expanded(child: _statCard('注册时间', '06-01')),
+              Expanded(child: _statCard('注册时间', '未注册')),
             ],
           ),
           const SizedBox(height: 20),
@@ -49,7 +50,7 @@ class ProfileTab extends StatelessWidget {
               _menuItem(Icons.swap_horiz_rounded, '切换身份', () {}),
               _divider(),
               _menuItem(Icons.settings_rounded, '设置', () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsScreen(isGuest: isGuest)));
               }),
               _divider(),
               _menuItem(Icons.info_outline_rounded, '关于', () {}),
@@ -65,13 +66,22 @@ class ProfileTab extends StatelessWidget {
   }
 
   Widget _statCard(String label, String value) {
-    return GlassCard(
+    return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Column(children: [
-        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.sky, decoration: TextDecoration.none)),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
-      ]),
+      decoration: BoxDecoration(
+        color: AppColors.glassWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.glassBorder, width: 1),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(value, textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.sky, decoration: TextDecoration.none)),
+          const SizedBox(height: 4),
+          Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
+        ],
+      ),
     );
   }
 
@@ -84,8 +94,7 @@ class ProfileTab extends StatelessWidget {
         child: Row(children: [
           Icon(icon, size: 20, color: color),
           const SizedBox(width: 12),
-          Text(label, style: TextStyle(fontSize: 15, color: color)),
-          const Spacer(),
+          Expanded(child: Text(label, style: TextStyle(fontSize: 15, color: color))),
           Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.paperDim),
         ]),
       ),
