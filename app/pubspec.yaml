@@ -20,6 +20,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    - assets/images/
+
   fonts:
     # 行书 — 品牌中文名
     - family: STXingkai

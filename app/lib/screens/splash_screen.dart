@@ -45,6 +45,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   // 阶段 2: 墨迹收缩
   late Animation<double> _inkShrink;   // 1 → 0（铺满→收缩）
 
+  // 阶段 2.5: Logo 浮现
+  late Animation<double> _logoO;     // 透明度
+  late Animation<double> _logoS;     // 缩放
+
   // 阶段 3: FiscalShield AI 浮现
   late Animation<double> _enTextO;     // 透明度
   late Animation<double> _enTextS;     // 缩放
@@ -99,6 +103,14 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     // 阶段 2: 墨迹收缩 (0.2 ~ 0.4)
     _inkShrink = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(parent: _seqCtrl, curve: const Interval(0.2, 0.4, curve: Curves.easeInOutCubic)),
+    );
+
+    // 阶段 2.5: Logo 浮现 (0.15 ~ 0.4)
+    _logoO = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _seqCtrl, curve: const Interval(0.15, 0.4, curve: Curves.easeIn)),
+    );
+    _logoS = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _seqCtrl, curve: const Interval(0.15, 0.4, curve: Curves.easeOutCubic)),
     );
 
     // 阶段 3: FiscalShield AI 浮现 (0.3 ~ 0.5)
@@ -340,6 +352,23 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        // ── 竹盾 Logo ──
+                        FadeTransition(
+                          opacity: _logoO,
+                          child: ScaleTransition(
+                            scale: _logoS,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 20),
+                              child: Image.asset(
+                                'assets/images/logo_transparent.png',
+                                width: 120,
+                                height: 120,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ),
+
                         // ── FiscalShield AI（主名，花体，大号）──
                         FadeTransition(
                           opacity: _enTextO,

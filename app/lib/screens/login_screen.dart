@@ -72,6 +72,14 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               children: [
               const SizedBox(height: 60),
+              // Logo
+              Image.asset(
+                'assets/images/logo_transparent.png',
+                width: 80,
+                height: 80,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 16),
               // 标题
               const Text('FiscalShield AI', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.paper, letterSpacing: 4, decoration: TextDecoration.none)),
               const SizedBox(height: 6),
