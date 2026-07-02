@@ -22,6 +22,7 @@ flutter:
 
   assets:
     - assets/images/
+    - shaders/
 
   fonts:
     # 行书 — 品牌中文名
