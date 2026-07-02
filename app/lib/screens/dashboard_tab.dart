@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/colors.dart';
+import '../config/fonts.dart';
 import '../models/prediction.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_widgets.dart';
@@ -250,7 +251,7 @@ class _DashboardTabState extends State<DashboardTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('指标概览', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+          const Text('指标概览', style: TextStyle(fontFamily: 'STKaiti', fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
           const SizedBox(height: 12),
           Center(child: InkBarChart(data: bars, maxWidth: MediaQuery.of(context).size.width - 80, maxHeight: 200)),
         ],

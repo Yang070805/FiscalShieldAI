@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/colors.dart';
+import '../config/fonts.dart';
 import '../widgets/ink_world.dart';
 import '../widgets/glass_widgets.dart';
 import 'main_screen.dart';
@@ -72,9 +73,9 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
               const SizedBox(height: 60),
               // 标题
-              const Text('财智哨兵', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.paper, letterSpacing: 4, decoration: TextDecoration.none)),
+              const Text('FiscalShield AI', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.paper, letterSpacing: 4, decoration: TextDecoration.none)),
               const SizedBox(height: 6),
-              Text('地方财政风险智能预警系统', style: TextStyle(fontSize: 13, color: AppColors.paperMid)),
+              Text('地方财政风险智能预警系统', style: AppFonts.headingSmall),
               const SizedBox(height: 40),
               // 登录卡片
               GlassCard(
@@ -83,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 角色选择
-                    const Text('选择版本', style: TextStyle(fontSize: 14, color: AppColors.paperDim)),
+                    const Text('选择版本', style: TextStyle(fontFamily: 'STKaiti', fontSize: 14, color: AppColors.paperDim, decoration: TextDecoration.none)),
                     const SizedBox(height: 12),
                     Row(
                       children: _roles.map((r) => Expanded(child: _buildRoleChip(r))).toList(),
@@ -112,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               foregroundColor: AppColors.sky,
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                             ),
-                            child: const Text('获取验证码', style: TextStyle(fontSize: 13)),
+                            child: const Text('获取验证码', style: TextStyle(fontSize: 13, decoration: TextDecoration.none)),
                           ),
                         ),
                       ],
@@ -131,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: Text(
                           _selectedRole != null ? '登  录' : '请选择版本',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 4),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 4, decoration: TextDecoration.none),
                         ),
                       ),
                     ),
@@ -142,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
               // 游客入口
               GestureDetector(
                 onTap: _onGuest,
-                child: Text('游客模式（限时体验）', style: TextStyle(fontSize: 13, color: AppColors.sky.withOpacity(0.7))),
+                child: Text('游客模式（限时体验）', style: TextStyle(fontSize: 13, color: AppColors.sky, decoration: TextDecoration.none)),
               ),
               const SizedBox(height: 40),
               ],
@@ -173,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Icon(r.icon, size: 26, color: isSelected ? r.color : AppColors.paperDim),
             const SizedBox(height: 6),
-            Text(r.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isSelected ? r.color : AppColors.paperDim)),
+            Text(r.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isSelected ? r.color : AppColors.paperDim, decoration: TextDecoration.none)),
           ],
         ),
       ),

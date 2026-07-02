@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/colors.dart';
+import '../config/fonts.dart';
 import '../widgets/ink_world.dart';
 import 'dashboard_tab.dart';
 import 'profile_tab.dart';
@@ -44,7 +45,7 @@ class _MainScreenState extends State<MainScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('财智哨兵', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.paper, letterSpacing: 2, decoration: TextDecoration.none)),
+              const Text('FiscalShield AI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.paper, letterSpacing: 2, decoration: TextDecoration.none)),
               Text(
                 '${widget.role}${widget.isGuest ? " · 游客模式" : ""}',
                 style: const TextStyle(fontSize: 12, color: AppColors.paperMid),

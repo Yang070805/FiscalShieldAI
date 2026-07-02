@@ -27,7 +27,7 @@ class ProfileTab extends StatelessWidget {
             child: const Icon(Icons.person_rounded, size: 44, color: Colors.white),
           ),
           const SizedBox(height: 14),
-          const Text('财智哨兵用户', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.paper, decoration: TextDecoration.none)),
+          const Text('FiscalShield AI用户', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.paper, decoration: TextDecoration.none)),
           const SizedBox(height: 4),
           Text('$role · 南京', style: const TextStyle(fontSize: 13, color: AppColors.paperMid)),
           const SizedBox(height: 28),

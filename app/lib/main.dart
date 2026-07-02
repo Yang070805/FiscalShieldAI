@@ -21,15 +21,18 @@ class FiscalShieldApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '财智哨兵',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
-      home: const SplashScreen(),
-      routes: {
-        '/login': (_) => const LoginScreen(),
-        '/main': (_) => const MainScreen(role: '政务版'),
-      },
+    return DefaultTextStyle(
+      style: const TextStyle(decoration: TextDecoration.none),
+      child: MaterialApp(
+        title: 'FiscalShield AI',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.dark,
+        home: const SplashScreen(),
+        routes: {
+          '/login': (_) => const LoginScreen(),
+          '/main': (_) => const MainScreen(role: '政务版'),
+        },
+      ),
     );
   }
 }

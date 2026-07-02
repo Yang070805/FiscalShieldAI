@@ -19,3 +19,31 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  fonts:
+    # 行书 — 品牌中文名
+    - family: STXingkai
+      fonts:
+        - asset: assets/fonts/STXINGKA.TTF
+
+    # 楷书 — 标题
+    - family: STKaiti
+      fonts:
+        - asset: assets/fonts/STKAITI.TTF
+
+    # 楷书备用（simkai）
+    - family: SimKai
+      fonts:
+        - asset: assets/fonts/simkai.ttf
+
+    # 手写花体 — 品牌英文名
+    - family: GreatVibes
+      fonts:
+        - asset: assets/fonts/GreatVibes-Regular.ttf
+
+    # 等宽 — 数据/指标
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+        - asset: assets/fonts/JetBrainsMono-Bold.ttf
+          weight: 700
