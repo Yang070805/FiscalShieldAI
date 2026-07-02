@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/colors.dart';
@@ -67,19 +68,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
-    // 更新密码
+    // 从用户列表查找并更新密码
     final prefs = await SharedPreferences.getInstance();
-    final registeredPhone = prefs.getString('registeredPhone');
-    if (registeredPhone == phone) {
-      await prefs.setString('registeredPwd', pwd);
-      setState(() => _isLoading = false);
-      _showSuccess('密码重置成功，请重新登录');
-      await Future.delayed(const Duration(milliseconds: 1000));
-      if (mounted) Navigator.pop(context);
-    } else {
+    final usersJson = prefs.getString('users') ?? '[]';
+    final users = List<Map<String, dynamic>>.from(
+      (jsonDecode(usersJson) as List).map((e) => Map<String, dynamic>.from(e)),
+    );
+
+    final userIndex = users.indexWhere((u) => u['phone'] == phone);
+    if (userIndex == -1) {
       setState(() => _isLoading = false);
       _showError('该手机号未注册');
+      return;
     }
+
+    users[userIndex]['pwd'] = pwd;
+    await prefs.setString('users', jsonEncode(users));
+
+    setState(() => _isLoading = false);
+    _showSuccess('密码重置成功，请重新登录');
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (mounted) Navigator.pop(context);
   }
 
   void _showError(String msg) {

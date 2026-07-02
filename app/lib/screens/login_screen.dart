@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/colors.dart';
@@ -84,25 +85,68 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    // 检查注册状态
+    // 检查注册状态（从用户列表查找）
     final prefs = await SharedPreferences.getInstance();
-    final registeredPhone = prefs.getString('registeredPhone');
-    final registeredPwd = prefs.getString('registeredPwd');
+    final usersJson = prefs.getString('users') ?? '[]';
+    final users = List<Map<String, dynamic>>.from(
+      (jsonDecode(usersJson) as List).map((e) => Map<String, dynamic>.from(e)),
+    );
 
-    if (registeredPhone == null) {
-      // 从未注册过 → 弹窗提示先注册
-      _showNeedRegister();
-    } else if (registeredPhone != phone) {
+    final user = users.cast<Map<String, dynamic>?>().firstWhere(
+      (u) => u?['phone'] == phone,
+      orElse: () => null,
+    );
+
+    if (user == null) {
       // 手机号未注册
       _showNeedRegister();
-    } else if (registeredPwd != pwd) {
+    } else if (user['pwd'] != pwd) {
       // 密码错误
       _showError('密码错误，请重新输入');
     } else {
-      // 登录成功
-      await prefs.setString('loginPhone', phone);
-      await prefs.setString('loginRole', _selectedRole!);
-      _navigateToMain();
+      // 检查角色权限（政务→政务+民用，企业→企业+民用，民用→仅民用）
+      final registeredRole = user['role'] ?? '民用版';
+      final selected = _selectedRole ?? '';
+      bool allowed = false;
+
+      if (registeredRole == '政务版' && (selected == '政务版' || selected == '民用版')) {
+        allowed = true;
+      } else if (registeredRole == '企业版' && (selected == '企业版' || selected == '民用版')) {
+        allowed = true;
+      } else if (registeredRole == '民用版' && selected == '民用版') {
+        allowed = true;
+      }
+
+      if (!allowed) {
+        _showRoleMismatch(registeredRole);
+      } else {
+        await prefs.setString('loginPhone', phone);
+        await prefs.setString('loginRole', selected);
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.deepBg,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.glassBorder)),
+            title: Row(children: [
+              Icon(Icons.check_circle_rounded, color: AppColors.celadon, size: 22),
+              const SizedBox(width: 8),
+              Text('登录成功', style: TextStyle(color: AppColors.paper, decoration: TextDecoration.none)),
+            ]),
+            content: Text('当前角色：$selected', style: TextStyle(color: AppColors.paperMid, decoration: TextDecoration.none)),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _navigateToMain();
+                },
+                child: Text('进入系统', style: TextStyle(color: AppColors.celadon, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        );
+      }
     }
   }
 
@@ -132,10 +176,33 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showRoleMismatch(String registeredRole) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.deepBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.glassBorder)),
+        title: Row(children: [
+          Icon(Icons.block_rounded, color: AppColors.riskHigh, size: 22),
+          const SizedBox(width: 8),
+          Text('登录失败', style: TextStyle(color: AppColors.paper, decoration: TextDecoration.none)),
+        ]),
+        content: Text('您的账号为「$registeredRole」，无法使用「$_selectedRole」登录。\n\n请切换到正确的角色后重试。', style: TextStyle(color: AppColors.paperMid, decoration: TextDecoration.none)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('知道了', style: TextStyle(color: AppColors.celadon, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _navigateToMain() {
+    final role = _selectedRole ?? '民用版';
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => MainScreen(role: _selectedRole!),
+        pageBuilder: (_, __, ___) => MainScreen(role: role),
         transitionsBuilder: (_, animation, __, child) {
           return SlideTransition(
             position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
@@ -196,9 +263,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 角色选择
-                        Text('选择版本', style: TextStyle(fontFamily: 'STKaiti', fontSize: 14, color: AppColors.paperDim, decoration: TextDecoration.none)),
-                        const SizedBox(height: 12),
+                        // 角色选择（需与注册角色匹配）
+                        Text('选择登录角色', style: TextStyle(fontSize: 13, color: AppColors.paperDim, decoration: TextDecoration.none)),
+                        const SizedBox(height: 8),
                         Row(
                           children: _roles.map((r) => Expanded(child: _buildRoleChip(r))).toList(),
                         ),
@@ -282,6 +349,25 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _roleInfoChip(_RoleData r) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.glassBorder, width: 1),
+      ),
+      child: Column(
+        children: [
+          Icon(r.icon, size: 22, color: AppColors.paperDim),
+          const SizedBox(height: 4),
+          Text(r.name, style: TextStyle(fontSize: 12, color: AppColors.paperDim, decoration: TextDecoration.none)),
+        ],
       ),
     );
   }
@@ -383,7 +469,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: _isLoading
             ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))
             : Text(
-                _selectedRole != null ? '登  录' : '请选择版本',
+                _selectedRole != null ? '登  录' : '请选择角色',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 4, decoration: TextDecoration.none),
               ),
       ),

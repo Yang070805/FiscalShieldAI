@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/colors.dart';
@@ -33,6 +34,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _nicknameFocused = false;
   bool _pwdFocused = false;
   bool _confirmFocused = false;
+  String? _selectedRole;
 
   @override
   void initState() {
@@ -66,6 +68,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final pwd = _pwdController.text;
     final confirm = _pwdConfirmController.text;
 
+    if (_selectedRole == null) { _showError('请选择注册角色'); return; }
     if (phone.length != 11) { _showError('请输入11位手机号'); return; }
     if (code.length != 6) { _showError('请输入6位验证码'); return; }
     if (nickname.isEmpty) { _showError('请输入昵称'); return; }
@@ -76,11 +79,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
-    // 保存注册信息
+    // 保存用户列表（JSON）
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('registeredPhone', phone);
-    await prefs.setString('registeredPwd', pwd);
-    await prefs.setString('registeredNickname', nickname);
+    final usersJson = prefs.getString('users') ?? '[]';
+    final users = List<Map<String, dynamic>>.from(
+      (jsonDecode(usersJson) as List).map((e) => Map<String, dynamic>.from(e)),
+    );
+
+    // 检查手机号是否已注册
+    final exists = users.any((u) => u['phone'] == phone);
+    if (exists) {
+      setState(() => _isLoading = false);
+      _showError('该手机号已注册');
+      return;
+    }
+
+    // 添加新用户
+    users.add({
+      'phone': phone,
+      'pwd': pwd,
+      'nickname': nickname,
+      'role': _selectedRole!,
+    });
+    await prefs.setString('users', jsonEncode(users));
 
     setState(() => _isLoading = false);
     _showSuccess('注册成功，请登录');
@@ -104,11 +125,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
-      child: InkWorld(
-        child: Material(
-          color: Colors.transparent,
-          child: SafeArea(
-            child: Column(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: InkWorld(
+          child: Material(
+            color: Colors.transparent,
+            child: SafeArea(
+              child: Column(
               children: [
                 // 顶栏
                 Padding(
@@ -138,6 +161,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('创建账号', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+                              const SizedBox(height: 16),
+                              // 角色选择
+                              Text('选择角色', style: TextStyle(fontSize: 13, color: AppColors.paperDim, decoration: TextDecoration.none)),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  _roleOption('政务版', Icons.account_balance_rounded, AppColors.celadon),
+                                  const SizedBox(width: 8),
+                                  _roleOption('企业版', Icons.business_rounded, AppColors.sky),
+                                  const SizedBox(width: 8),
+                                  _roleOption('民用版', Icons.person_rounded, AppColors.teal),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
                               const SizedBox(height: 24),
                               _buildInput(_phoneController, '手机号', Icons.phone_rounded, TextInputType.phone,
                                 focusNode: _phoneFocus, focused: _phoneFocused, maxLength: 11),
@@ -208,6 +245,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    ),
+  );
+  }
+
+  Widget _roleOption(String role, IconData icon, Color color) {
+    final isSelected = _selectedRole == role;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedRole = role),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? color.withOpacity(0.5) : AppColors.glassBorder,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 22, color: isSelected ? color : AppColors.paperDim),
+              const SizedBox(height: 4),
+              Text(role, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? color : AppColors.paperDim, decoration: TextDecoration.none)),
+            ],
           ),
         ),
       ),

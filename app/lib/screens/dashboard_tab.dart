@@ -44,27 +44,48 @@ class _DashboardTabState extends State<DashboardTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isCivilian = widget.role == '民用版';
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInputCard(),
+          // ── 顶部标题 ──
+          _buildSectionTitle(),
           const SizedBox(height: 16),
-          if (_result != null) _buildWarningBanner(),
-          if (_result != null) const SizedBox(height: 16),
-          _buildRiskCards(),
-          const SizedBox(height: 16),
-          if (_result != null) _buildMetricsTable(),
-          if (_result != null) const SizedBox(height: 16),
-          // 3D 柱形图（参考 XCL-Charts）
-          if (_result != null) _buildBarChart(),
-          if (_result != null) const SizedBox(height: 16),
-          _buildReportToggle(),
-          if (_showReport && _result?.aiReport != null) ...[
-            const SizedBox(height: 8),
-            _buildReportContent(),
+
+          if (!isCivilian) ...[
+            // 政务版/企业版：功能差异化
+            _buildInputCard(),
+            const SizedBox(height: 16),
+            // 政务版专属：数据上传入口
+            if (widget.role == '政务版') ...[
+              _buildUploadEntry(),
+              const SizedBox(height: 16),
+            ],
+            if (_result != null) _buildWarningBanner(),
+            if (_result != null) const SizedBox(height: 16),
+            _buildRiskCards(),
+            const SizedBox(height: 16),
+            if (_result != null) _buildMetricsTable(),
+            if (_result != null) const SizedBox(height: 16),
+            if (_result != null) _buildBarChart(),
+            if (_result != null) const SizedBox(height: 16),
+            _buildReportToggle(),
+            if (_showReport && _result?.aiReport != null) ...[
+              const SizedBox(height: 8),
+              _buildReportContent(),
+            ],
+            // 企业版专属：快捷分析
+            if (widget.role == '企业版') ...[
+              const SizedBox(height: 16),
+              _buildQuickAnalysis(),
+            ],
+          ] else ...[
+            // 民用版：只读公开数据
+            _buildCivilianView(),
           ],
+
           if (_error != null) ...[
             const SizedBox(height: 16),
             _buildError(),
@@ -74,6 +95,215 @@ class _DashboardTabState extends State<DashboardTab> {
             _buildPerf(),
           ],
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  /// 顶部标题（角色差异化）
+  Widget _buildSectionTitle() {
+    final titles = {
+      '政务版': '财政风险监测中心',
+      '企业版': '企业风险分析平台',
+      '民用版': '公共财政数据查询',
+    };
+    final subtitles = {
+      '政务版': '实时监控 · 智能预警 · 合规报告',
+      '企业版': '风险评估 · 趋势分析 · 决策支持',
+      '民用版': '公开数据 · 简单查询 · 透明监督',
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(titles[widget.role] ?? '仪表盘',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.paper, decoration: TextDecoration.none)),
+        const SizedBox(height: 4),
+        Text(subtitles[widget.role] ?? '',
+          style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
+      ],
+    );
+  }
+
+  /// 政务版专属：数据上传入口
+  Widget _buildUploadEntry() {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      glow: true,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.celadon.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.cloud_upload_rounded, color: AppColors.celadon, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('数据上报', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+                const SizedBox(height: 2),
+                Text('上传财政数据用于模型训练', style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: AppColors.paperDim, size: 20),
+        ],
+      ),
+    );
+  }
+
+  /// 企业版专属：快捷分析入口
+  Widget _buildQuickAnalysis() {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('快捷分析', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _quickBtn(Icons.show_chart_rounded, '趋势分析', AppColors.celadon),
+              const SizedBox(width: 10),
+              _quickBtn(Icons.compare_arrows_rounded, '对标分析', AppColors.sky),
+              const SizedBox(width: 10),
+              _quickBtn(Icons.assessment_rounded, '风险评估', AppColors.riskMedium),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _quickBtn(IconData icon, String label, Color color) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {},
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 22, color: color),
+              const SizedBox(height: 6),
+              Text(label, style: TextStyle(fontSize: 12, color: color, decoration: TextDecoration.none)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 民用版只读视图
+  Widget _buildCivilianView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 搜索框
+        GlassCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.search_rounded, color: AppColors.paperDim, size: 20),
+              const SizedBox(width: 10),
+              Expanded(child: Text('搜索城市、指标...', style: TextStyle(color: AppColors.paperDim, fontSize: 14))),
+              Icon(Icons.mic_rounded, color: AppColors.paperDim, size: 20),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // 热门城市
+        Text('热门城市', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+        const SizedBox(height: 12),
+        _buildCityCards(),
+        const SizedBox(height: 20),
+
+        // 公开数据概览
+        Text('公开数据概览', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+        const SizedBox(height: 12),
+        _buildPublicDataCards(),
+      ],
+    );
+  }
+
+  Widget _buildCityCards() {
+    final cities = [
+      {'name': '南京', 'risk': '中等', 'color': AppColors.riskMedium},
+      {'name': '苏州', 'risk': '低', 'color': AppColors.riskLow},
+      {'name': '无锡', 'risk': '低', 'color': AppColors.riskLow},
+      {'name': '常州', 'risk': '中等偏高', 'color': AppColors.riskHigh},
+    ];
+    return Row(
+      children: cities.map((c) => Expanded(
+        child: GlassCard(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+          child: Column(
+            children: [
+              Text(c['name'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: (c['color'] as Color).withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+                child: Text(c['risk'] as String, style: TextStyle(fontSize: 11, color: c['color'] as Color)),
+              ),
+            ],
+          ),
+        ),
+      )).toList(),
+    );
+  }
+
+  Widget _buildPublicDataCards() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _publicDataRow('GDP增速', '5.2%', '↑', AppColors.riskLow, '南京市统计局 2025年公报'),
+        _publicDataRow('财政收入', '1,234亿', '↑', AppColors.riskLow, '南京市财政局 2025年度报告'),
+        _publicDataRow('债务率', '23.5%', '↓', AppColors.riskMedium, '财政部地方债监测数据'),
+        _publicDataRow('赤字率', '3.1%', '→', AppColors.riskLow, '南京市财政局 2025年度报告'),
+      ],
+    );
+  }
+
+  Widget _publicDataRow(String label, String value, String trend, Color trendColor, String source) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.glassWhite,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.glassBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(label, style: TextStyle(fontSize: 14, color: AppColors.paper)),
+              const Spacer(),
+              Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+              const SizedBox(width: 8),
+              Text(trend, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: trendColor)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded, size: 11, color: AppColors.paperDim),
+              const SizedBox(width: 4),
+              Expanded(child: Text(source, style: TextStyle(fontSize: 10, color: AppColors.paperDim), maxLines: 1, overflow: TextOverflow.ellipsis)),
+            ],
+          ),
         ],
       ),
     );
