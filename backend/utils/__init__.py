@@ -1,1 +1,1 @@
-from .encryption import mask_phone, mask_id_card, mask_email, mask_name, mask_dict
+# 各模块在 endpoint 中按需 import

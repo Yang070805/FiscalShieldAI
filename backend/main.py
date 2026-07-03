@@ -1,6 +1,9 @@
 """
 FiscalShieldAI 后端 V2 — FastAPI 入口
 """
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from contextlib import asynccontextmanager
 

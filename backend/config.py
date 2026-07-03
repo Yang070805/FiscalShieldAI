@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # 蓝心大模型
     BLUELM_API_KEY: str = ""
 
+    # 运行时用户配置的 API Key（前端设置页传入）
+    _user_api_keys: dict = {}
+
     # 服务器
     HOST: str = "0.0.0.0"
     PORT: int = 8000

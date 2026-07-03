@@ -1,95 +1,65 @@
-/// API 响应数据模型
+/// 预测结果数据模型 — 匹配后端 /predict 响应
 class PredictionResult {
   final String city;
   final int year;
-  final RiskInfo fiscalRisk;
-  final RiskInfo financeRisk;
-  final RiskInfo overallRisk;
-  final WarningInfo warning;
-  final Map<String, double> metrics;
-  final String explanation;
-  final PerformanceInfo? performance;
-  final String? aiReport;
+  final double riskScore; // 0-100
+  final String riskLevel; // low/medium/high/critical
+  final String trend; // rising/stable/declining
+  final Map<String, dynamic> detail;
+  final bool cached;
 
   PredictionResult({
     required this.city,
     required this.year,
-    required this.fiscalRisk,
-    required this.financeRisk,
-    required this.overallRisk,
-    required this.warning,
-    required this.metrics,
-    required this.explanation,
-    this.performance,
-    this.aiReport,
+    required this.riskScore,
+    required this.riskLevel,
+    required this.trend,
+    this.detail = const {},
+    this.cached = false,
   });
 
   factory PredictionResult.fromJson(Map<String, dynamic> json) {
     return PredictionResult(
       city: json['city'] ?? '',
       year: json['year'] ?? 0,
-      fiscalRisk: RiskInfo.fromJson(json['fiscal_risk'] ?? {}),
-      financeRisk: RiskInfo.fromJson(json['finance_risk'] ?? {}),
-      overallRisk: RiskInfo.fromJson(json['overall_risk'] ?? {}),
-      warning: WarningInfo.fromJson(json['warning'] ?? {}),
-      metrics: Map<String, double>.from(
-        (json['metrics'] as Map<String, dynamic>? ?? {}).map((k, v) => MapEntry(k, (v as num).toDouble())),
-      ),
-      explanation: json['explanation'] ?? '',
-      performance: json['performance'] != null ? PerformanceInfo.fromJson(json['performance']) : null,
-      aiReport: json['ai_report'],
-    );
-  }
-}
-
-class RiskInfo {
-  final String level;
-  final int levelIndex;
-  final double confidence;
-  final List<double> probabilityDistribution;
-
-  RiskInfo({required this.level, required this.levelIndex, required this.confidence, required this.probabilityDistribution});
-
-  factory RiskInfo.fromJson(Map<String, dynamic> json) {
-    return RiskInfo(
-      level: json['level'] ?? '--',
-      levelIndex: json['level_index'] ?? 0,
-      confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
-      probabilityDistribution: (json['probability_distribution'] as List<dynamic>? ?? []).map((e) => (e as num).toDouble()).toList(),
+      riskScore: (json['risk_score'] as num?)?.toDouble() ?? 0,
+      riskLevel: json['risk_level'] ?? 'low',
+      trend: json['trend'] ?? 'stable',
+      detail: Map<String, dynamic>.from(json['detail'] ?? {}),
+      cached: json['cached'] ?? false,
     );
   }
 
-  double get confidencePercent => confidence * 100;
-}
-
-class WarningInfo {
-  final String level;
-  final String color;
-  final String message;
-  final bool thresholdMet;
-
-  WarningInfo({required this.level, required this.color, required this.message, required this.thresholdMet});
-
-  factory WarningInfo.fromJson(Map<String, dynamic> json) {
-    return WarningInfo(
-      level: json['level'] ?? '',
-      color: json['color'] ?? '#8BC34A',
-      message: json['message'] ?? '',
-      thresholdMet: json['threshold_met'] ?? false,
-    );
+  /// 风险等级中文
+  String get riskLevelCn {
+    switch (riskLevel) {
+      case 'critical': return '极高风险';
+      case 'high': return '高风险';
+      case 'medium': return '中等风险';
+      case 'low': return '低风险';
+      default: return '未知';
+    }
   }
-}
 
-class PerformanceInfo {
-  final double inferenceTimeMs;
-  final String device;
-  PerformanceInfo({required this.inferenceTimeMs, required this.device});
+  /// 趋势中文
+  String get trendCn {
+    switch (trend) {
+      case 'rising': return '上升';
+      case 'declining': return '下降';
+      case 'stable': return '稳定';
+      default: return '未知';
+    }
+  }
 
-  factory PerformanceInfo.fromJson(Map<String, dynamic> json) {
-    return PerformanceInfo(
-      inferenceTimeMs: (json['inference_time_ms'] as num).toDouble(),
-      device: json['device'] ?? 'cpu',
-    );
+  /// 风险等级对应颜色 (ARGB hex)
+  String get riskColorHex {
+    switch (riskLevel) {
+      case 'critical': return '#D32F2F'; // 红
+      case 'high': return '#F57C00';     // 橙
+      case 'medium': return '#FBC02D';   // 黄
+      case 'low': return '#388E3C';      // 绿
+      default: return '#757575';         // 灰
+    }
   }
 }
 

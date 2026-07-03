@@ -5,24 +5,26 @@
 from datetime import datetime, timedelta, timezone
 
 from jose import jwt, JWTError
-from passlib.context import CryptContext
+import bcrypt
 
 from config import get_settings
 
 settings = get_settings()
 
-# 密码哈希
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(password: str) -> str:
     """明文密码 → bcrypt 哈希"""
-    return pwd_context.hash(password)
+    pwd_bytes = password.encode('utf-8')[:72]  # bcrypt 限制72字节
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """验证明文密码与哈希是否匹配"""
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(
+        plain_password.encode('utf-8')[:72],
+        hashed_password.encode('utf-8'),
+    )
 
 
 def create_access_token(user_id: int, role: str) -> str:

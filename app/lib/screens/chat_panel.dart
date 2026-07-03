@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/colors.dart';
+import '../services/api_service.dart';
 import '../widgets/glass_widgets.dart';
 
 /// LLM 聊天面板 — 底部弹出，半屏高度
@@ -24,10 +27,14 @@ class _ChatPanelState extends State<ChatPanel> {
   final _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [];
   bool _isTyping = false;
+  String _selectedProvider = 'bluelm';
+  String _selectedModel = 'Doubao-Seed-2.0-mini';
+  List<Map<String, dynamic>> _availableModels = [];
 
   @override
   void initState() {
     super.initState();
+    _loadProvider();
     // 欢迎消息
     final contextHint = widget.contextCity != null
         ? '当前城市：${widget.contextCity}'
@@ -40,12 +47,62 @@ class _ChatPanelState extends State<ChatPanel> {
     ));
   }
 
+  Future<void> _loadProvider() async {
+    final prefs = await SharedPreferences.getInstance();
+    final phone = prefs.getString('loginPhone') ?? '';
+    final prefix = phone.isNotEmpty ? '${phone}_' : '';
+    final providers = ['bluelm', 'deepseek', 'qwen', 'doubao', 'openai', 'anthropic', 'kimi', 'glm'];
+    final providerNames = {'bluelm': 'vivo 蓝心', 'deepseek': 'DeepSeek', 'qwen': '通义千问', 'doubao': '豆包', 'openai': 'OpenAI', 'anthropic': 'Claude', 'kimi': 'Kimi', 'glm': 'GLM'};
+    final defaultModels = {'bluelm': 'Doubao-Seed-2.0-mini', 'deepseek': 'deepseek-chat', 'qwen': 'qwen-turbo', 'doubao': 'doubao-lite-4k', 'openai': 'gpt-4o-mini', 'anthropic': 'claude-3-5-haiku-20241022', 'kimi': 'moonshot-v1-8k', 'glm': 'glm-4-flash'};
+    final models = <Map<String, dynamic>>[];
+    for (final p in providers) {
+      final key = prefs.getString('${prefix}llm_key_$p') ?? '';
+      if (key.isNotEmpty) {
+        final model = prefs.getString('${prefix}llm_model_$p') ?? defaultModels[p] ?? '';
+        models.add({'provider': p, 'name': providerNames[p] ?? p, 'model': model});
+      }
+    }
+    if (models.isEmpty) {
+      models.add({'provider': 'bluelm', 'name': 'vivo 蓝心', 'model': 'Doubao-Seed-2.0-mini'});
+    }
+    final savedProvider = prefs.getString('${prefix}chat_provider') ?? '';
+    final savedModelName = prefs.getString('${prefix}chat_model') ?? '';
+    Map<String, dynamic>? selected;
+    if (savedProvider.isNotEmpty && savedModelName.isNotEmpty) {
+      selected = models.firstWhere(
+        (m) => m['provider'] == savedProvider && m['model'] == savedModelName,
+        orElse: () => models.first,
+      );
+    } else {
+      selected = models.first;
+    }
+    setState(() {
+      _availableModels = models;
+      _selectedProvider = selected!['provider'];
+      _selectedModel = selected['model'];
+    });
+  }
+
+  void _switchModel(Map<String, dynamic> model) async {
+    final prefs = await SharedPreferences.getInstance();
+    final phone = prefs.getString('loginPhone') ?? '';
+    final prefix = phone.isNotEmpty ? '${phone}_' : '';
+    await prefs.setString('${prefix}chat_provider', model['provider']);
+    await prefs.setString('${prefix}chat_model', model['model']);
+    setState(() {
+      _selectedProvider = model['provider'];
+      _selectedModel = model['model'];
+    });
+  }
+
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
   }
+
+  int? _chatId; // 当前对话ID，用于续接
 
   void _sendMessage() {
     final text = _controller.text.trim();
@@ -58,29 +115,112 @@ class _ChatPanelState extends State<ChatPanel> {
     _controller.clear();
     _scrollToBottom();
 
-    // 模拟 LLM 回复（后端接入后替换）
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      final reply = _generateMockReply(text);
-      setState(() {
-        _messages.add(_ChatMessage(role: 'assistant', content: reply));
-        _isTyping = false;
-      });
-      _scrollToBottom();
-    });
+    _streamReply(text);
   }
 
-  String _generateMockReply(String question) {
-    final q = question.toLowerCase();
-    if (q.contains('风险') || q.contains('risk')) {
-      return '根据当前数据分析：\n\n• **财政风险**：赤字率处于警戒线附近，需关注\n• **债务率**：整体可控，但增速较快\n• **建议**：优化支出结构，控制新增债务\n\n如需详细报告，可在仪表盘查看 AI 分析报告。';
-    } else if (q.contains('预测') || q.contains('趋势')) {
-      return '基于 ST-GNN + LightTCN 双引擎模型预测：\n\n• 未来 3 年 GDP 增速预计维持在 4.5%-5.5%\n• 财政收入增速可能放缓\n• 债务率需持续监控\n\n⚠️ 预测结果仅供参考，实际受政策和市场影响。';
-    } else if (q.contains('政策') || q.contains('建议')) {
-      return '综合分析建议：\n\n1. **优化支出结构**：减少非必要开支，保障重点领域\n2. **拓宽收入来源**：培育新税源，提高税收效率\n3. **控制债务规模**：合理安排举债节奏，防范风险\n4. **加强绩效管理**：提高财政资金使用效益';
-    } else {
-      return '收到你的问题：「$question」\n\n这是一个好问题！后端 LLM 接入后，我会基于真实数据给出更精准的分析。\n\n目前为演示模式，你可以尝试问我：\n• 某城市的财政风险如何？\n• 未来趋势预测\n• 政策建议';
+  /// SSE 流式调用后端 LLM
+  void _streamReply(String message) async {
+    final api = ApiService();
+    String fullReply = '';
+    final assistantIndex = _messages.length;
+
+    // 先加一个空消息占位
+    setState(() {
+      _messages.add(_ChatMessage(role: 'assistant', content: ''));
+    });
+
+    try {
+      await for (final event in api.chatStream(
+        message: message,
+        chatId: _chatId,
+        city: widget.contextCity,
+        model: _selectedProvider,  // 传 provider key，不是 model name
+      )) {
+        if (!mounted) return;
+        if (event.type == 'start') {
+          _chatId = event.chatId;
+        } else if (event.type == 'chunk') {
+          fullReply += event.content ?? '';
+          setState(() {
+            _messages[assistantIndex] = _ChatMessage(role: 'assistant', content: fullReply);
+          });
+          _scrollToBottom();
+        } else if (event.type == 'done') {
+          // 完成
+        } else if (event.type == 'error') {
+          fullReply = event.content ?? '请求失败';
+          setState(() {
+            _messages[assistantIndex] = _ChatMessage(role: 'assistant', content: '⚠️ $fullReply');
+          });
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messages[assistantIndex] = _ChatMessage(
+          role: 'assistant',
+          content: '⚠️ 连接失败：$e\n\n请检查后端是否启动，以及网络是否通畅。',
+        );
+      });
+    } finally {
+      if (mounted) setState(() => _isTyping = false);
+      _scrollToBottom();
     }
+  }
+
+  void _showModelSelector() {
+    final providerNames = {'bluelm': 'vivo 蓝心', 'deepseek': 'DeepSeek', 'qwen': '通义千问', 'doubao': '豆包', 'openai': 'OpenAI', 'anthropic': 'Claude', 'kimi': 'Kimi', 'glm': 'GLM'};
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.4,
+        decoration: BoxDecoration(
+          color: AppColors.deepBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border.all(color: AppColors.glassBorder),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(Icons.auto_awesome_rounded, color: AppColors.celadon, size: 20),
+              const SizedBox(width: 8),
+              Text('选择模型', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+            ]),
+            const SizedBox(height: 4),
+            Text('当前: ${providerNames[_selectedProvider] ?? _selectedProvider} / $_selectedModel', style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _availableModels.length,
+                itemBuilder: (ctx, i) {
+                  final m = _availableModels[i];
+                  final isSelected = m['provider'] == _selectedProvider && m['model'] == _selectedModel;
+                  return ListTile(
+                    dense: true,
+                    selected: isSelected,
+                    selectedTileColor: AppColors.celadon.withOpacity(0.08),
+                    leading: Icon(
+                      isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+                      size: 18,
+                      color: isSelected ? AppColors.celadon : AppColors.paperDim,
+                    ),
+                    title: Text(m['model'], style: TextStyle(fontSize: 13, fontFamily: 'JetBrainsMono', color: isSelected ? AppColors.celadon : AppColors.paper, decoration: TextDecoration.none)),
+                    subtitle: Text(providerNames[m['provider']] ?? m['provider'], style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
+                    onTap: () {
+                      _switchModel(m);
+                      Navigator.pop(ctx);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _scrollToBottom() {
@@ -157,6 +297,27 @@ class _ChatPanelState extends State<ChatPanel> {
               Icon(Icons.auto_awesome_rounded, color: AppColors.celadon, size: 20),
               const SizedBox(width: 8),
               Text('AI 助手', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+              const SizedBox(width: 8),
+              // 模型选择器
+              GestureDetector(
+                onTap: _showModelSelector,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.celadon.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.celadon.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_selectedModel, style: TextStyle(fontSize: 11, color: AppColors.celadon, fontFamily: 'JetBrainsMono')),
+                      const SizedBox(width: 4),
+                      Icon(Icons.expand_more_rounded, size: 14, color: AppColors.celadon),
+                    ],
+                  ),
+                ),
+              ),
               if (contextLabel.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 Container(
@@ -404,14 +565,14 @@ class _ChatPanelState extends State<ChatPanel> {
 
   List<String> _getQuickQuestions() {
     switch (widget.role) {
-      case '政务版':
+      case 'gov':
         return [
           '分析当前城市的财政风险',
           '未来3年趋势预测',
           '有哪些政策建议？',
           '赤字率偏高怎么办？',
         ];
-      case '企业版':
+      case 'enterprise':
         return [
           '分析当前企业的财务健康度',
           '与同行业对比如何？',

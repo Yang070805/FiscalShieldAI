@@ -116,14 +116,27 @@ async def list_favorites(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取收藏列表"""
+    """获取收藏列表（含关注数）"""
     result = await db.execute(
         select(Favorite)
         .where(Favorite.user_id == user.id)
         .order_by(Favorite.created_at.desc())
     )
     favorites = result.scalars().all()
-    return ok(data=[{"city": f.city, "created_at": f.created_at.isoformat()} for f in favorites])
+
+    # 统计每个城市的关注数
+    fav_cities = [f.city for f in favorites]
+    city_counts = {}
+    if fav_cities:
+        count_result = await db.execute(
+            select(Favorite.city, func.count(Favorite.id).label("count"))
+            .where(Favorite.city.in_(fav_cities))
+            .group_by(Favorite.city)
+        )
+        for row in count_result.all():
+            city_counts[row[0]] = row[1]
+
+    return ok(data=[{"city": f.city, "count": city_counts.get(f.city, 0), "created_at": f.created_at.isoformat()} for f in favorites])
 
 
 # ==================== 推荐 ====================

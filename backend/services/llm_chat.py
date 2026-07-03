@@ -1,159 +1,151 @@
 """
-LLM 对话服务 — 多模型支持 + 流式输出
+LLM 对话服务 — 多 Provider 支持 + SSE 流式
+参考 next-ai-draw-io 的 chat/route.ts 模式
 """
 
-import asyncio
 import json
-import os
-import sys
-from typing import AsyncGenerator, Optional
-
 import httpx
+from typing import AsyncGenerator
 
-# ==================== SSE 格式化 ====================
-
-def sse_event(data: dict) -> str:
-    """格式化 SSE 事件"""
-    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-
-
-# ==================== LLM 调用 ====================
-
-# 模型配置
-MODEL_CONFIGS = {
-    "bluelm": {
-        "name": "蓝心大模型",
-        "api_url": "https://api-ai.vivo.com.cn/v1/chat/completions",
-        "model": "vivo-BlueLM-Chat",
-        "api_key_env": "BLUELM_API_KEY",
-    },
-    "deepseek": {
-        "name": "DeepSeek",
-        "api_url": "https://api.deepseek.com/v1/chat/completions",
-        "model": "deepseek-chat",
-        "api_key_env": "DEEPSEEK_API_KEY",
-    },
-    "qwen": {
-        "name": "通义千问",
-        "api_url": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-        "model": "qwen-turbo",
-        "api_key_env": "QWEN_API_KEY",
-    },
-    "doubao": {
-        "name": "豆包",
-        "api_url": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
-        "model": "doubao-lite-4k",
-        "api_key_env": "DOUBAO_API_KEY",
-    },
-}
+from services.llm_providers import (
+    get_provider,
+    resolve_api_key,
+    get_app_id,
+    resolve_base_url,
+    build_headers,
+)
 
 
-def _build_system_prompt(city: Optional[str], year: Optional[int], role: str) -> str:
-    """构建系统提示词"""
-    base = "你是 FiscalShield AI（财智哨兵），一个专业的财政风险分析助手。"
-    base += "你能够分析城市财政数据、预测财政风险、生成分析报告。"
+# 系统提示词
+SYSTEM_PROMPT = """你是 FiscalShield AI 财政风险分析助手。你的职责是：
+1. 分析城市/企业的财政风险数据
+2. 解读赤字率、债务率、负债率等关键指标
+3. 提供风险预警和政策建议
+4. 基于历史数据给出趋势预测
 
-    if role == "gov":
-        base += "当前用户是政务人员，你可以提供详细的政策建议和风险预警。"
-    elif role == "enterprise":
-        base += "当前用户是企业人员，你可以提供商业视角的财政分析。"
-    else:
-        base += "当前用户是普通市民，用通俗易懂的语言解释财政数据。"
-
-    if city and year:
-        base += f"\n当前分析对象：{city} {year}年财政数据。"
-
-    return base
+回答要简洁、专业、有数据支撑。如果用户询问的是具体城市数据，请说明你需要先查询数据库。"""
 
 
 async def call_llm_stream(
     message: str,
-    history: list[dict],
-    city: Optional[str] = None,
-    year: Optional[int] = None,
+    history: list = None,
+    city: str = None,
+    year: int = None,
     role: str = "citizen",
     model: str = "bluelm",
+    api_key: str = None,
+    base_url: str = None,
+    app_id: str = None,
 ) -> AsyncGenerator[str, None]:
     """
-    流式调用 LLM
-    优先级：指定模型 → 蓝心 → 本地模板
+    SSE 流式调用 LLM
+    支持多家 Provider，从前端 Header 获取配置
     """
-    config = MODEL_CONFIGS.get(model, MODEL_CONFIGS["bluelm"])
-    api_key = os.getenv(config["api_key_env"], "")
-
-    # 没有 API Key → 降级到本地模板
-    if not api_key:
-        async for chunk in _local_template_stream(message, city, year, role):
-            yield chunk
-        return
+    # 解析 Provider 配置
+    provider_config = get_provider(model)
+    resolved_key = resolve_api_key(model, api_key)
+    resolved_url = resolve_base_url(model, base_url)
+    # 优先用传入的 app_id，其次从文件读取
+    resolved_app_id = app_id or get_app_id(model)
+    headers = build_headers(model, resolved_key, app_id=resolved_app_id)
 
     # 构建消息
-    system_prompt = _build_system_prompt(city, year, role)
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(history)
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    # 添加上下文
+    context_parts = []
+    if city:
+        context_parts.append(f"当前分析城市：{city}")
+    if year:
+        context_parts.append(f"数据年份：{year}")
+    if context_parts:
+        messages.append({"role": "system", "content": "\n".join(context_parts)})
+
+    # 添加历史对话
+    if history:
+        for msg in history[-8:]:  # 最近8条
+            messages.append({"role": msg["role"], "content": msg["content"]})
+
+    # 添加当前消息
     messages.append({"role": "user", "content": message})
 
+    # 构建请求体
+    is_anthropic = model == "anthropic"
+    if is_anthropic:
+        # Anthropic Messages API 格式
+        system_msg = messages[0]["content"]
+        api_messages = messages[1:]
+        body = {
+            "model": provider_config.model,
+            "max_tokens": 2048,
+            "system": system_msg,
+            "messages": api_messages,
+            "stream": True,
+        }
+    else:
+        # OpenAI 兼容格式
+        body = {
+            "model": provider_config.model,
+            "messages": messages,
+            "max_tokens": 2048,
+            "stream": True,
+            "temperature": 0.7,
+        }
+
+    # vivo 蓝心需要 request_id 查询参数
+    import uuid
+    request_id = str(uuid.uuid4())
+    request_url = resolved_url
+    if model == "bluelm":
+        separator = "&" if "?" in resolved_url else "?"
+        request_url = f"{resolved_url}{separator}request_id={request_id}"
+
+    # 流式请求
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             async with client.stream(
                 "POST",
-                config["api_url"],
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": config["model"],
-                    "messages": messages,
-                    "stream": True,
-                    "temperature": 0.7,
-                    "max_tokens": 2000,
-                },
-            ) as response:
-                if response.status_code != 200:
-                    async for chunk in _local_template_stream(message, city, year, role):
-                        yield chunk
+                request_url,
+                headers=headers,
+                json=body,
+            ) as resp:
+                if resp.status_code != 200:
+                    error_body = ""
+                    async for chunk in resp.aiter_text():
+                        error_body += chunk
+                    yield f"[错误] {provider_config.display_name} 返回 {resp.status_code}: {error_body[:200]}"
                     return
 
-                async for line in response.aiter_lines():
-                    if not line.startswith("data: "):
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data:"):
                         continue
-                    data_str = line[6:]
-                    if data_str.strip() == "[DONE]":
+                    data_str = line[5:].strip()
+                    if data_str == "[DONE]":
                         break
                     try:
                         data = json.loads(data_str)
-                        delta = data["choices"][0].get("delta", {})
-                        content = delta.get("content", "")
-                        if content:
-                            yield content
-                    except (json.JSONDecodeError, KeyError, IndexError):
+                        if is_anthropic:
+                            if data.get("type") == "content_block_delta":
+                                yield data.get("delta", {}).get("text", "")
+                        else:
+                            choices = data.get("choices", [])
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                # vivo 蓝心: 先返回 reasoning_content（思考），再返回 content（回复）
+                                content = delta.get("content", "")
+                                reasoning = delta.get("reasoning_content", "")
+                                if content:
+                                    yield content
+                                # reasoning_content 不输出给用户（思考过程）
+                    except json.JSONDecodeError:
                         continue
 
-    except Exception:
-        async for chunk in _local_template_stream(message, city, year, role):
-            yield chunk
+    except httpx.TimeoutException:
+        yield "[错误] 请求超时，请稍后重试"
+    except Exception as e:
+        yield f"[错误] {str(e)}"
 
 
-async def _local_template_stream(
-    message: str,
-    city: Optional[str],
-    year: Optional[int],
-    role: str,
-) -> AsyncGenerator[str, None]:
-    """本地模板回复（降级方案）"""
-    if city and year:
-        response = f"关于{city} {year}年的财政情况，根据我们的AI模型分析：\n\n"
-        response += f"该城市财政风险处于可控范围内。建议持续关注债务率、赤字率等核心指标的变化趋势。\n\n"
-        response += f"如需更详细的分析，请查看「AI报告」功能。"
-    else:
-        response = f"你好！我是财智哨兵 AI 助手，专注于财政风险分析。\n\n"
-        response += f"你可以：\n"
-        response += f"1. 让我分析某个城市的财政风险\n"
-        response += f"2. 查询历史预测数据\n"
-        response += f"3. 生成专业的财政分析报告\n\n"
-        response += f"请问有什么可以帮你的？"
-
-    for char in response:
-        yield char
-        await asyncio.sleep(0.02)
+def sse_event(data: dict) -> str:
+    """格式化 SSE 事件"""
+    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"

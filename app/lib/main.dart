@@ -11,7 +11,9 @@ import 'services/api_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  ApiService().configure(host: '127.0.0.1', port: 9527);
+  // 真机用电脑局域网IP，模拟器用 10.0.2.2
+  ApiService().configure(baseUrl: 'http://10.184.67.48:8000');
+  await ApiService().restoreToken();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
@@ -79,7 +81,7 @@ class _FiscalShieldAppState extends State<FiscalShieldApp> {
         home: const SplashScreen(),
         routes: {
           '/login': (_) => const LoginScreen(),
-          '/main': (_) => const MainScreen(role: '政务版'),
+          '/main': (_) => const MainScreen(role: 'gov'),
         },
         ),
       ),

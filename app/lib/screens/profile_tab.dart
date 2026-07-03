@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/colors.dart';
 import '../config/theme_schemes.dart';
 import '../widgets/glass_widgets.dart';
+import '../services/api_service.dart';
 import 'about_screen.dart';
 import 'avatar_picker_screen.dart';
 import 'settings_screen.dart';
@@ -21,9 +21,20 @@ class ProfileTab extends StatefulWidget {
 }
 
 class _ProfileTabState extends State<ProfileTab> {
+  final ApiService _api = ApiService();
   String _nickname = 'FiscalShield AI用户';
   String _phone = '';
   String _role = '';
+  String _createdAt = '';
+
+  // code → 中文名
+  static const Map<String, String> _roleNames = {
+    'gov': '政务版',
+    'enterprise': '企业版',
+    'citizen': '民用版',
+  };
+
+  String _displayName(String code) => _roleNames[code] ?? code;
 
   @override
   void initState() {
@@ -35,51 +46,37 @@ class _ProfileTabState extends State<ProfileTab> {
     final prefs = await SharedPreferences.getInstance();
     final loginPhone = prefs.getString('loginPhone') ?? '';
     final loginRole = prefs.getString('loginRole') ?? widget.role;
-    final usersJson = prefs.getString('users') ?? '[]';
-    final users = List<Map<String, dynamic>>.from(
-      (jsonDecode(usersJson) as List).map((e) => Map<String, dynamic>.from(e)),
-    );
-    final user = users.cast<Map<String, dynamic>?>().firstWhere(
-      (u) => u?['phone'] == loginPhone,
-      orElse: () => null,
-    );
+    final nickname = prefs.getString('loginNickname') ?? '';
+    final createdAt = prefs.getString('loginCreatedAt') ?? '';
     if (mounted) {
       setState(() {
-        _nickname = user?['nickname'] ?? 'FiscalShield AI用户';
+        _nickname = nickname.isNotEmpty ? nickname : 'FiscalShield AI用户';
         _phone = loginPhone;
         _role = loginRole;
+        _createdAt = createdAt;
       });
     }
   }
 
   void _showRoleSwitchDialog() async {
-    // 从用户列表读取注册角色（不是当前角色）
     final prefs = await SharedPreferences.getInstance();
-    final loginPhone = prefs.getString('loginPhone') ?? '';
-    final usersJson = prefs.getString('users') ?? '[]';
-    final users = List<Map<String, dynamic>>.from(
-      (jsonDecode(usersJson) as List).map((e) => Map<String, dynamic>.from(e)),
-    );
-    final user = users.cast<Map<String, dynamic>?>().firstWhere(
-      (u) => u?['phone'] == loginPhone,
-      orElse: () => null,
-    );
-    final registeredRole = user?['role'] ?? '民用版';
+    // 读取注册角色（后端返回的角色 code）
+    final registeredRole = prefs.getString('loginRegisteredRole') ?? prefs.getString('loginRole') ?? 'citizen';
 
     final availableRoles = <Map<String, dynamic>>[];
 
-    if (registeredRole == '政务版') {
-      availableRoles.add({'name': '政务版', 'icon': Icons.account_balance_rounded, 'desc': '财政风险监测', 'enabled': true});
-      availableRoles.add({'name': '民用版', 'icon': Icons.person_rounded, 'desc': '公共数据查询', 'enabled': true});
-      availableRoles.add({'name': '企业版', 'icon': Icons.business_rounded, 'desc': '无权限', 'enabled': false});
-    } else if (registeredRole == '企业版') {
-      availableRoles.add({'name': '企业版', 'icon': Icons.business_rounded, 'desc': '企业风险分析', 'enabled': true});
-      availableRoles.add({'name': '民用版', 'icon': Icons.person_rounded, 'desc': '公共数据查询', 'enabled': true});
-      availableRoles.add({'name': '政务版', 'icon': Icons.account_balance_rounded, 'desc': '无权限', 'enabled': false});
+    if (registeredRole == 'gov') {
+      availableRoles.add({'code': 'gov', 'icon': Icons.account_balance_rounded, 'desc': '财政风险监测', 'enabled': true});
+      availableRoles.add({'code': 'citizen', 'icon': Icons.person_rounded, 'desc': '公共数据查询', 'enabled': true});
+      availableRoles.add({'code': 'enterprise', 'icon': Icons.business_rounded, 'desc': '无权限', 'enabled': false});
+    } else if (registeredRole == 'enterprise') {
+      availableRoles.add({'code': 'enterprise', 'icon': Icons.business_rounded, 'desc': '企业风险分析', 'enabled': true});
+      availableRoles.add({'code': 'citizen', 'icon': Icons.person_rounded, 'desc': '公共数据查询', 'enabled': true});
+      availableRoles.add({'code': 'gov', 'icon': Icons.account_balance_rounded, 'desc': '无权限', 'enabled': false});
     } else {
-      availableRoles.add({'name': '民用版', 'icon': Icons.person_rounded, 'desc': '公共数据查询', 'enabled': true});
-      availableRoles.add({'name': '政务版', 'icon': Icons.account_balance_rounded, 'desc': '无权限', 'enabled': false});
-      availableRoles.add({'name': '企业版', 'icon': Icons.business_rounded, 'desc': '无权限', 'enabled': false});
+      availableRoles.add({'code': 'citizen', 'icon': Icons.person_rounded, 'desc': '公共数据查询', 'enabled': true});
+      availableRoles.add({'code': 'gov', 'icon': Icons.account_balance_rounded, 'desc': '无权限', 'enabled': false});
+      availableRoles.add({'code': 'enterprise', 'icon': Icons.business_rounded, 'desc': '无权限', 'enabled': false});
     }
 
     showDialog(
@@ -95,21 +92,21 @@ class _ProfileTabState extends State<ProfileTab> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: availableRoles.map((r) {
+            final code = r['code'] as String;
             final isEnabled = r['enabled'] as bool;
-            final isCurrent = r['name'] == _role;
+            final isCurrent = code == _role;
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: isEnabled && !isCurrent ? () async {
-                    final newRole = r['name'] as String;
                     final prefs = await SharedPreferences.getInstance();
-                    await prefs.setString('loginRole', newRole);
+                    await prefs.setString('loginRole', code);
                     if (ctx.mounted) Navigator.pop(ctx);
                     if (mounted) {
-                      setState(() => _role = newRole);
-                      widget.onRoleSwitch?.call(newRole);
+                      setState(() => _role = code);
+                      widget.onRoleSwitch?.call(code);
                     }
                   } : null,
                   borderRadius: BorderRadius.circular(12),
@@ -136,7 +133,7 @@ class _ProfileTabState extends State<ProfileTab> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(r['name'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isCurrent ? AppColors.celadon : isEnabled ? AppColors.paper : AppColors.paperDim.withOpacity(0.5), decoration: TextDecoration.none)),
+                              Text(_displayName(code), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isCurrent ? AppColors.celadon : isEnabled ? AppColors.paper : AppColors.paperDim.withOpacity(0.5), decoration: TextDecoration.none)),
                               Text(r['desc'] as String, style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
                             ],
                           ),
@@ -206,7 +203,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   color: AppColors.paper,
                   decoration: TextDecoration.none)),
           const SizedBox(height: 4),
-          Text('$_role · ${_phone.isNotEmpty ? _phone : '未登录'}',
+          Text('${_displayName(_role)} · ${_phone.isNotEmpty ? _phone : '未登录'}',
               style: TextStyle(fontSize: 13, color: AppColors.paperMid)),
           const SizedBox(height: 28),
           // 统计
@@ -216,7 +213,7 @@ class _ProfileTabState extends State<ProfileTab> {
               const SizedBox(width: 10),
               Expanded(child: _statCard('收藏数', '0')),
               const SizedBox(width: 10),
-              Expanded(child: _statCard('注册时间', '未注册')),
+              Expanded(child: _statCard('注册时间', _createdAt.isNotEmpty ? _createdAt.substring(5, 10) : '未注册')),
             ],
           ),
           const SizedBox(height: 20),
@@ -235,9 +232,15 @@ class _ProfileTabState extends State<ProfileTab> {
               }),
               _divider(),
               _menuItem(Icons.logout_rounded, '退出登录', () async {
+                await _api.logout();
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.remove('loginPhone');
                 await prefs.remove('loginRole');
+                await prefs.remove('loginRegisteredRole');
+                await prefs.remove('loginNickname');
+                await prefs.remove('loginUserPhone');
+                await prefs.remove('loginCreatedAt');
+                await prefs.remove('auth_token');
                 themeNotifier.setTheme(ThemeType.inkBlue);
                 AppColors.update(ThemeType.inkBlue);
                 themeNotifier.setFontSize(0);
@@ -257,7 +260,7 @@ class _ProfileTabState extends State<ProfileTab> {
 
   Widget _statCard(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
       decoration: BoxDecoration(
         color: AppColors.glassWhite,
         borderRadius: BorderRadius.circular(16),
@@ -266,10 +269,12 @@ class _ProfileTabState extends State<ProfileTab> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, textAlign: TextAlign.center, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.sky, decoration: TextDecoration.none)),
+          Text(value, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: value.length > 6 ? 14 : 20, fontWeight: FontWeight.bold, color: AppColors.sky, decoration: TextDecoration.none)),
           const SizedBox(height: 4),
-          Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
+          Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
         ],
       ),
     );

@@ -2,7 +2,7 @@
 Pydantic Schema — 上传相关
 """
 
-from typing import List, Optional, Any
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -37,3 +37,28 @@ class UploadHistoryItem(BaseModel):
     created_at: str
 
     model_config = {"from_attributes": True}
+
+
+class PublicDataItem(BaseModel):
+    """公开数据项"""
+    city: str
+    year: int
+    risk_score: float
+    risk_level: str
+    trend: str
+    created_at: str
+
+
+class TrainingDataResponse(BaseModel):
+    """训练回流数据"""
+    total: int
+    cities: List[str]
+    years: List[int]
+    records: List[dict]
+
+
+class CityStatsItem(BaseModel):
+    """城市统计"""
+    city: str
+    count: int
+    avg_score: Optional[float]

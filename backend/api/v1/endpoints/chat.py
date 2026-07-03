@@ -5,7 +5,7 @@
 import json
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -26,6 +26,9 @@ async def chat(
     req: ChatRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    x_ai_api_key: str = Header(None, alias="X-AI-API-Key"),
+    x_ai_model: str = Header(None, alias="X-AI-Model"),
+    x_ai_app_id: str = Header(None, alias="X-AI-App-ID"),
 ):
     """
     AI 对话（SSE 流式响应）
@@ -79,7 +82,8 @@ async def chat(
 
     # 5. 返回 SSE 流式响应
     return StreamingResponse(
-        _chat_stream(chat_id, req.message, history, req.city, req.year, user.role, req.model, db),
+        _chat_stream(chat_id, req.message, history, req.city, req.year, user.role, req.model, db,
+                    api_key=x_ai_api_key, provider=x_ai_model, app_id=x_ai_app_id),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
@@ -94,13 +98,16 @@ async def _chat_stream(
     role: str,
     model: str,
     db: AsyncSession,
+    api_key: str = None,
+    provider: str = None,
+    app_id: str = None,
 ):
     """SSE 流式生成器"""
     yield sse_event({"type": "start", "chat_id": chat_id})
 
     full_response = ""
     try:
-        async for chunk in call_llm_stream(message, history, city, year, role, model):
+        async for chunk in call_llm_stream(message, history, city, year, role, provider or model, api_key=api_key, app_id=app_id):
             full_response += chunk
             yield sse_event({"type": "chunk", "content": chunk})
 

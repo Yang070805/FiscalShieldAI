@@ -4,6 +4,7 @@ AI 引擎服务层 — 包装 ai_engine 的推理和报告模块
 
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -23,8 +24,8 @@ def _get_predictor():
     if _predictor is None:
         try:
             from inference import RiskPredictor
-            model_path = AI_ENGINE_DIR / "checkpoints" / "student_model.pth"
-            scaler_path = AI_ENGINE_DIR / "checkpoints" / "scaler.pkl"
+            model_path = AI_ENGINE_DIR / "checkpoints" / "best_student_model.pth"
+            scaler_path = AI_ENGINE_DIR / "checkpoints" / "data_scaler.joblib"
             _predictor = RiskPredictor(
                 model_path=str(model_path),
                 scaler_path=str(scaler_path) if scaler_path.exists() else None,
@@ -130,52 +131,165 @@ def predict_by_city(city: str, year: int) -> dict:
 
 def generate_report(city: str, year: int, role: str = "citizen") -> dict:
     """
-    AI 报告生成
+    AI 报告生成（三-tier 策略）
+    1. 尝试调用 bluelm_report.py（有 API Key 时）
+    2. 无 API Key / 调用失败 → 用本地模板 + 数据填充
     返回: {city, year, content, source}
     """
+    # 先获取预测数据作为报告输入
+    predict_result = predict_by_city(city, year)
+    if "error" in predict_result:
+        return {"error": predict_result["error"]}
+
+    # Tier 1: 尝试调用蓝心大模型
     try:
         from bluelm_report import ReportGenerator
         gen = ReportGenerator(api_key="")
 
-        # 先获取预测数据作为报告输入
-        predict_result = predict_by_city(city, year)
-        if "error" in predict_result:
-            return {"error": predict_result["error"]}
-
-        report_text = gen.generate_report(
-            city=city,
-            year=year,
-            prediction_data=predict_result,
-            role=role,
-        )
-        return {
-            "city": city,
-            "year": year,
-            "content": report_text,
-            "source": "bluelm",
-        }
+        report_text = gen.generate_report(predict_result)
+        if report_text:
+            return {
+                "city": city,
+                "year": year,
+                "content": report_text,
+                "source": "bluelm",
+            }
     except Exception as e:
-        # 降级到本地模板
-        return _local_report(city, year, predict_by_city(city, year))
+        print(f"[ai_engine] bluelm 调用失败: {e}")
+
+    # Tier 2: 本地模板报告
+    return _local_report(city, year, predict_result)
 
 
 def _local_report(city: str, year: int, pred: dict) -> dict:
-    """本地模板报告（降级方案）"""
+    """本地模板报告 — 使用 report_template.md + 数据填充"""
+    from datetime import datetime
     risk_level = pred.get("risk_level", "unknown")
     risk_score = pred.get("risk_score", 0)
-    content = f"""# {city} {year}年 财政风险分析报告
+    trend = pred.get("trend", "unknown")
+    detail = pred.get("detail", {})
 
-## 综合评估
-- **风险评分**: {risk_score}/100
-- **风险等级**: {risk_level}
-- **趋势**: {pred.get('trend', 'unknown')}
+    # 风险等级中文
+    level_cn = {
+        "low": "低风险",
+        "medium": "中等风险",
+        "high": "高风险",
+        "critical": "极高风险",
+    }.get(risk_level, risk_level)
 
-## 建议
-根据模型预测，{city}当前财政风险等级为{risk_level}，建议持续关注相关指标变化。
+    trend_cn = {
+        "rising": "上升",
+        "declining": "下降",
+        "stable": "稳定",
+    }.get(trend, trend)
+
+    # 综合评估
+    risk_overview = (
+        f"**{city}**当前财政风险等级为**{level_cn}**（评分 {risk_score}/100），"
+        f"风险趋势呈{trend_cn}态势。"
+    )
+
+    # 核心指标分析
+    metrics_lines = []
+    if "metrics" in detail:
+        for k, v in detail["metrics"].items():
+            metrics_lines.append(f"- **{k}**: {v}")
+    if "fiscal_risk" in detail:
+        fr = detail["fiscal_risk"]
+        metrics_lines.append(f"- **财政风险等级**: {fr.get('level', '-')}（置信度 {fr.get('confidence', 0):.1%}）")
+    if "finance_risk" in detail:
+        fir = detail["finance_risk"]
+        metrics_lines.append(f"- **金融风险等级**: {fir.get('level', '-')}（置信度 {fir.get('confidence', 0):.1%}）")
+    metrics_analysis = "\n".join(metrics_lines) if metrics_lines else "暂无详细指标数据。"
+
+    # 趋势研判
+    trend_analysis = (
+        f"基于历史数据和模型预测，{city}财政风险呈{trend_cn}趋势。"
+    )
+    if trend == "rising":
+        trend_analysis += "风险上升需要重点关注相关指标变化，建议加强监控。"
+    elif trend == "declining":
+        trend_analysis += "风险下降表明当前政策措施效果良好，建议保持现有策略。"
+    else:
+        trend_analysis += "风险保持稳定，建议持续关注宏观经济环境变化。"
+
+    # 政策建议
+    suggestions = {
+        "low": [
+            "继续保持审慎的财政管理策略",
+            "利用当前窗口期推进结构性改革",
+            "建立常态化的风险监测机制",
+        ],
+        "medium": [
+            "加强财政与金融数据的联动监测",
+            "对高风险领域进行压力测试",
+            "适度收紧财政支出，优先保障重点领域",
+        ],
+        "high": [
+            "立即召开财政风险研判会议",
+            "严格控制新增政府债务",
+            "加快存量债务置换和化解",
+            "建立跨部门风险应对机制",
+        ],
+        "critical": [
+            "立即启动财政应急响应机制",
+            "暂停非必要的财政支出项目",
+            "向上级财政部门报告并寻求支持",
+            "制定专项债务化解方案",
+            "建立每日风险监测和报告制度",
+        ],
+    }
+    advice_list = suggestions.get(risk_level, suggestions["medium"])
+    policy_suggestions = "\n".join(f"{i+1}. {a}" for i, a in enumerate(advice_list))
+
+    # 重点关注
+    key_warnings = []
+    if risk_score > 70:
+        key_warnings.append(f"风险评分 {risk_score} 处于较高水平，需持续监控")
+    if trend == "rising":
+        key_warnings.append("风险呈上升趋势，建议密切关注")
+    if not key_warnings:
+        key_warnings.append("当前无特别需要关注的风险点")
+    key_warnings_text = "\n".join(f"- {w}" for w in key_warnings)
+
+    # 读取模板并填充
+    template_path = Path(__file__).parent.parent / "templates" / "report_template.md"
+    try:
+        template = template_path.read_text(encoding="utf-8")
+        content = template.format(
+            city=city,
+            year=year,
+            risk_overview=risk_overview,
+            metrics_analysis=metrics_analysis,
+            trend_analysis=trend_analysis,
+            policy_suggestions=policy_suggestions,
+            key_warnings=key_warnings_text,
+            data_source="AI模型预测数据",
+            generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        )
+    except Exception:
+        # 模板读取失败，用内联模板
+        content = f"""# {city} {year}年 财政风险分析报告
+
+## 📊 风险概况
+{risk_overview}
+
+## 📈 核心指标分析
+{metrics_analysis}
+
+## 🔮 趋势研判
+{trend_analysis}
+
+## 💡 政策建议
+{policy_suggestions}
+
+## ⚠️ 重点关注
+{key_warnings_text}
 
 ---
 *本报告由本地模板生成，仅供参考。*
 """
+
     return {"city": city, "year": year, "content": content, "source": "local"}
 
 

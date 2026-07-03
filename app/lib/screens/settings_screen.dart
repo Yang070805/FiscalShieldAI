@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/colors.dart';
-
 import '../config/theme_schemes.dart';
+import '../services/api_service.dart';
 import '../widgets/ink_world.dart';
 import '../widgets/glass_widgets.dart';
 import '../main.dart';
 import 'avatar_picker_screen.dart';
+import 'llm_config_screen.dart';
 
 /// 设置页
 class SettingsScreen extends StatefulWidget {
@@ -18,9 +19,13 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  // 用户信息
+  String _userPhone = '';
+
   // LLM 配置
   bool _llmEnabled = false;
   String _selectedModel = 'vivo蓝心';
+  bool _showApiKey = false;
   final _apiKeyController = TextEditingController();
   final _endpointController = TextEditingController();
 
@@ -31,12 +36,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _LlmModel('豆包', 'Doubao API', Icons.bolt_rounded, '字节跳动 · 快速响应'),
     _LlmModel('ChatGPT', 'OpenAI API', Icons.chat_rounded, 'GPT-4o · 英文最强'),
     _LlmModel('Claude', 'Anthropic API', Icons.psychology_rounded, '推理能力强'),
+    _LlmModel('Kimi', 'Moonshot API', Icons.wb_sunny_rounded, '月之暗面 · 长文本'),
   ];
 
   @override
   void initState() {
     super.initState();
+    _loadUserInfo();
     _loadLlmConfig();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userPhone = prefs.getString('loginPhone') ?? '';
+    });
+  }
+
+  String _maskPhone(String phone) {
+    if (phone.length >= 7) {
+      return '${phone.substring(0, 3)}****${phone.substring(phone.length - 4)}';
+    }
+    return phone;
   }
 
   @override
@@ -62,6 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString('llmModel', _selectedModel);
     await prefs.setString('llmApiKey', _apiKeyController.text.trim());
     await prefs.setString('llmEndpoint', _endpointController.text.trim());
+    // API Key 存在本地，每次请求时随 Header 一起发送
   }
 
   @override
@@ -94,18 +116,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _llmToggleItem(),
                       if (_llmEnabled) ...[
                         _divider(),
-                        _llmModelItem(),
-                        _divider(),
-                        _llmApiKeyItem(),
-                        _divider(),
-                        _llmEndpointItem(),
-                        _divider(),
-                        _llmTestItem(),
+                        _item(Icons.auto_awesome_rounded, '模型配置', '', onTap: () {
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LlmConfigScreen()));
+                        }),
                       ],
                     ]),
                     const SizedBox(height: 16),
                     _section('账号与安全', [
-                      _item(Icons.phone_rounded, '绑定手机号', widget.isGuest ? '未绑定' : '138****0000', onTap: _showBindPhoneDialog),
+                      _item(Icons.phone_rounded, '绑定手机号', _userPhone.isNotEmpty ? _maskPhone(_userPhone) : '未绑定', onTap: _showBindPhoneDialog),
                       _item(Icons.link_rounded, '绑定社交账号', '未绑定', onTap: _showBindSocialDialog),
                       _item(Icons.lock_rounded, '修改密码', '', onTap: _showChangePasswordDialog),
                     ]),
@@ -509,8 +527,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!widget.isGuest) ...[
-              Text('当前绑定：138****0000', style: TextStyle(color: AppColors.paperMid)),
+            if (!widget.isGuest && _userPhone.isNotEmpty) ...[
+              Text('当前绑定：${_maskPhone(_userPhone)}', style: TextStyle(color: AppColors.paperMid)),
               const SizedBox(height: 12),
               Text('更换手机号', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.paper)),
             ],
@@ -814,18 +832,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _llmModelItem() {
+  Widget _llmProviderSelector() {
+    final currentModel = _models.firstWhere((m) => m.name == _selectedModel, orElse: () => _models.first);
     return InkWell(
       onTap: _showModelPicker,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(children: [
-          Icon(Icons.smart_toy_rounded, size: 20, color: AppColors.sky),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.celadon.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(currentModel.icon, size: 20, color: AppColors.celadon),
+          ),
           const SizedBox(width: 12),
-          Text('模型选择', style: TextStyle(fontSize: 15, color: AppColors.paper)),
-          const Spacer(),
-          Text(_selectedModel, style: TextStyle(fontSize: 13, color: AppColors.celadon, fontWeight: FontWeight.w600)),
-          const SizedBox(width: 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(currentModel.name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+                Text(currentModel.desc, style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
+              ],
+            ),
+          ),
           Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.paperDim),
         ]),
       ),
@@ -837,7 +868,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.55,
+        height: MediaQuery.of(context).size.height * 0.65,
         decoration: BoxDecoration(
           color: AppColors.deepBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -847,8 +878,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('选择模型', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
-            const SizedBox(height: 6),
+            Row(children: [
+              Icon(Icons.auto_awesome_rounded, color: AppColors.celadon, size: 22),
+              const SizedBox(width: 8),
+              Text('选择 AI Provider', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+            ]),
+            const SizedBox(height: 4),
             Text('vivo 蓝心为默认推荐，与比赛呼应', style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
             const SizedBox(height: 16),
             Expanded(
@@ -917,6 +952,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _llmApiKeyItem() {
+    final isObscured = _apiKeyController.text.isNotEmpty && !_showApiKey;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -926,11 +962,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icon(Icons.key_rounded, size: 20, color: AppColors.sky),
             const SizedBox(width: 12),
             Text('API Key', style: TextStyle(fontSize: 15, color: AppColors.paper)),
+            const Spacer(),
+            if (_apiKeyController.text.isNotEmpty)
+              GestureDetector(
+                onTap: () => setState(() => _showApiKey = !_showApiKey),
+                child: Icon(_showApiKey ? Icons.visibility_rounded : Icons.visibility_off_rounded, size: 18, color: AppColors.paperDim),
+              ),
           ]),
           const SizedBox(height: 8),
           TextField(
             controller: _apiKeyController,
-            obscureText: true,
+            obscureText: !_showApiKey,
             style: TextStyle(color: AppColors.paper, fontSize: 14),
             decoration: InputDecoration(
               hintText: '输入 API Key',
@@ -1010,18 +1052,123 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _llmRecommendedModels() {
+    final recommendations = {
+      'vivo蓝心': [
+        {'name': 'vivo-BlueLM-Chat', 'desc': '默认对话模型', 'tag': '推荐'},
+        {'name': 'vivo-BlueLM-Chat-32K', 'desc': '长上下文版', 'tag': '长文本'},
+      ],
+      'DeepSeek': [
+        {'name': 'deepseek-chat', 'desc': '通用对话', 'tag': '推荐'},
+        {'name': 'deepseek-reasoner', 'desc': '深度推理', 'tag': '推理'},
+      ],
+      '通义千问': [
+        {'name': 'qwen-turbo', 'desc': '快速响应', 'tag': '推荐'},
+        {'name': 'qwen-plus', 'desc': '增强版', 'tag': '增强'},
+        {'name': 'qwen-max', 'desc': '旗舰版', 'tag': '最强'},
+      ],
+      '豆包': [
+        {'name': 'doubao-lite-4k', 'desc': '轻量快速', 'tag': '推荐'},
+        {'name': 'doubao-pro-32k', 'desc': '专业版', 'tag': '增强'},
+      ],
+      'ChatGPT': [
+        {'name': 'gpt-4o-mini', 'desc': '高性价比', 'tag': '推荐'},
+        {'name': 'gpt-4o', 'desc': '旗舰版', 'tag': '最强'},
+      ],
+      'Claude': [
+        {'name': 'claude-3-5-haiku-20241022', 'desc': '快速轻量', 'tag': '推荐'},
+        {'name': 'claude-sonnet-4-20250514', 'desc': '均衡版', 'tag': '均衡'},
+      ],
+      'Kimi': [
+        {'name': 'moonshot-v1-8k', 'desc': '8K上下文', 'tag': '推荐'},
+        {'name': 'moonshot-v1-32k', 'desc': '32K上下文', 'tag': '长文本'},
+      ],
+    };
+    final models = recommendations[_selectedModel] ?? [];
+    if (models.isEmpty) return const SizedBox();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.recommend_rounded, size: 20, color: AppColors.celadon),
+            const SizedBox(width: 12),
+            Text('推荐模型', style: TextStyle(fontSize: 15, color: AppColors.paper)),
+          ]),
+          const SizedBox(height: 8),
+          ...models.map((m) => Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.cardBg.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.glassBorder),
+            ),
+            child: Row(children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(m['name']!, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.paper, fontFamily: 'JetBrainsMono', decoration: TextDecoration.none)),
+                    Text(m['desc']!, style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.celadon.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(m['tag']!, style: TextStyle(fontSize: 10, color: AppColors.celadon, fontWeight: FontWeight.w600)),
+              ),
+            ]),
+          )),
+        ],
+      ),
+    );
+  }
+
   Widget _llmTestItem() {
     return InkWell(
-      onTap: () {
-        if (_apiKeyController.text.isEmpty) {
+      onTap: () async {
+        final apiKey = _apiKeyController.text.trim();
+        if (apiKey.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('请先填写 API Key'), backgroundColor: AppColors.riskHigh, duration: const Duration(seconds: 2)),
+            SnackBar(content: Text('⚠️ 请先输入 API Key'), backgroundColor: AppColors.warmApricot, duration: const Duration(seconds: 2)),
           );
           return;
         }
+        // 显示测试中状态
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('连接测试（待后端实现）'), backgroundColor: AppColors.sky, duration: const Duration(seconds: 2)),
+          SnackBar(content: Row(children: [
+            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+            const SizedBox(width: 10),
+            Text('正在测试 ${_selectedModel} 连接...'),
+          ]), backgroundColor: AppColors.sky, duration: const Duration(seconds: 1)),
         );
+        try {
+          final api = ApiService();
+          final modelMap = {'vivo蓝心': 'bluelm', 'DeepSeek': 'deepseek', '通义千问': 'qwen', '豆包': 'doubao', 'ChatGPT': 'openai', 'Claude': 'anthropic', 'Kimi': 'kimi'};
+          final result = await api.testLlmConnection(
+            apiKey: apiKey.isNotEmpty ? apiKey : null,
+            model: modelMap[_selectedModel] ?? 'bluelm',
+          );
+          if (!mounted) return;
+          final status = result['status'] ?? 'error';
+          final message = result['message'] ?? '未知错误';
+          final color = status == 'ok' ? AppColors.celadon : AppColors.riskHigh;
+          final icon = status == 'ok' ? '✅' : '❌';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$icon $message'), backgroundColor: color, duration: const Duration(seconds: 3)),
+          );
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('❌ 连接异常: $e'), backgroundColor: AppColors.riskHigh, duration: const Duration(seconds: 2)),
+          );
+        }
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
