@@ -103,6 +103,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   onTap: isEnabled && !isCurrent ? () async {
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.setString('loginRole', code);
+                    await prefs.commit();
                     if (ctx.mounted) Navigator.pop(ctx);
                     if (mounted) {
                       setState(() => _role = code);

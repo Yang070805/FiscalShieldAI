@@ -131,6 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setString('loginNickname', data['user']['nickname'] ?? '');
       await prefs.setString('loginUserPhone', data['user']['phone'] ?? phone);
       await prefs.setString('loginCreatedAt', data['user']['created_at'] ?? '');
+      await prefs.commit(); // 确保持久化
 
       if (!mounted) return;
       _showLoginSuccess(_selectedRole!);

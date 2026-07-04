@@ -23,9 +23,18 @@ import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from db.session import async_session
-from models.prediction import Prediction
-from models.training import TrainingRecord
+try:
+    from db.session import async_session
+    from models.prediction import Prediction
+    from models.training import TrainingRecord
+except ImportError:
+    # 如果导入失败，使用相对导入
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from db.session import async_session
+    from models.prediction import Prediction
+    from models.training import TrainingRecord
 
 # AI Engine 路径
 AI_ENGINE_DIR = Path(__file__).resolve().parent.parent.parent / "ai_engine"
@@ -35,6 +44,7 @@ if str(AI_ENGINE_DIR) not in sys.path:
 
 # ==================== 全局训练状态 ====================
 
+_training_lock = threading.Lock()  # 并发训练锁
 _training_state = {
     "status": "idle",  # idle / training / completed / failed
     "current_epoch": 0,
@@ -48,12 +58,14 @@ _training_state = {
 
 def get_training_status() -> dict:
     """获取当前训练状态"""
-    return dict(_training_state)
+    with _training_lock:
+        return dict(_training_state)
 
 
 def _update_state(**kwargs):
-    """更新训练状态"""
-    _training_state.update(kwargs)
+    """更新训练状态（线程安全）"""
+    with _training_lock:
+        _training_state.update(kwargs)
 
 
 # ==================== 训练执行 ====================
@@ -291,9 +303,13 @@ def start_training(epochs: int = 50, incremental: bool = True) -> dict:
     Returns:
         训练状态
     """
-    current = get_training_status()
-    if current["status"] == "training":
-        return {"status": "training", "message": "训练正在进行中，请稍候"}
+    # 使用锁检查状态，防止并发启动
+    with _training_lock:
+        if _training_state["status"] == "training":
+            return {"status": "training", "message": "训练正在进行中，请稍候"}
+        # 立即设置状态，防止其他线程启动
+        _training_state["status"] = "training"
+        _training_state["message"] = "训练启动中..."
 
     # 后台线程执行训练
     thread = threading.Thread(

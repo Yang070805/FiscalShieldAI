@@ -89,6 +89,7 @@ class _ChatPanelState extends State<ChatPanel> {
     final prefix = phone.isNotEmpty ? '${phone}_' : '';
     await prefs.setString('${prefix}chat_provider', model['provider']);
     await prefs.setString('${prefix}chat_model', model['model']);
+    await prefs.commit(); // 确保持久化
     setState(() {
       _selectedProvider = model['provider'];
       _selectedModel = model['model'];

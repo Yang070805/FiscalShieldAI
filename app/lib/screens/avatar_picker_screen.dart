@@ -148,6 +148,7 @@ class AvatarPickerScreen extends StatelessWidget {
         themeNotifier.setAvatar(avatar['name']!);
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('avatar', avatar['name']!);
+        await prefs.commit();
       },
       child: AnimatedScale(
         scale: isSelected ? 1.08 : 1.0,
@@ -209,6 +210,7 @@ class AvatarPickerScreen extends StatelessWidget {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('avatar', 'custom');
     await prefs.setString('customAvatarPath', savedFile.path);
+    await prefs.commit();
   }
 
   String _getAvatarLabel(String name) {

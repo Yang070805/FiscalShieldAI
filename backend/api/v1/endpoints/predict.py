@@ -15,6 +15,7 @@ from schemas.prediction import PredictResponse
 from services.ai_engine import predict_by_city, get_available_cities
 from core.deps import get_current_user
 from core.response import ok
+from core.exceptions import ParamsError
 
 router = APIRouter(prefix="/predict", tags=["预测"])
 
@@ -38,6 +39,11 @@ async def predict_city(
     - 先查数据库缓存（24小时内有效）
     - 缓存未命中 → 调 AI 引擎推理 → 结果存入缓存
     """
+    # 输入验证
+    if not city or not city.strip():
+        raise ParamsError("城市名不能为空")
+    city = city.strip()
+    
     # 1. 查缓存
     result = await db.execute(
         select(Prediction).where(

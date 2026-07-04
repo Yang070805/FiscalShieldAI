@@ -83,6 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString('llmModel', _selectedModel);
     await prefs.setString('llmApiKey', _apiKeyController.text.trim());
     await prefs.setString('llmEndpoint', _endpointController.text.trim());
+    await prefs.commit(); // 确保持久化
     // API Key 存在本地，每次请求时随 Header 一起发送
   }
 

@@ -9,7 +9,7 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  String _baseUrl = 'http://10.0.2.2:8000'; // Android 模拟器访问宿主机
+  String _baseUrl = 'http://10.184.67.48:8000'; // 真机访问电脑（手机热点）
   String? _token;
   String? _refreshToken;
 
@@ -376,6 +376,77 @@ class ApiService {
   }
 
   // ==================== 数据上传 ====================
+
+  /// 带管道的数据上传（完整流程：字段映射→验证→清洗→去重→评分→入库）
+  Future<Map<String, dynamic>> uploadWithPipeline({
+    required String filePath,
+    required String city,
+    required int year,
+    String permission = 'internal',
+    bool skipDedup = false,
+    bool skipTs = false,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/api/v1/pipeline/upload').replace(
+      queryParameters: {
+        'city': city,
+        'year': year.toString(),
+        'permission': permission,
+        if (skipDedup) 'skip_dedup': 'true',
+        if (skipTs) 'skip_ts': 'true',
+      },
+    );
+
+    final request = http.MultipartRequest('POST', uri);
+    request.headers.addAll({'Authorization': 'Bearer $_token'});
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+    final streamedResponse = await request.send().timeout(
+      const Duration(seconds: 60),
+      onTimeout: () => throw ApiException('管道处理超时'),
+    );
+
+    final resp = await http.Response.fromStream(streamedResponse);
+    return _parseResponse(resp);
+  }
+
+  /// 仅验证文件（不入库）
+  Future<Map<String, dynamic>> validateFile(String filePath) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_baseUrl/api/v1/pipeline/validate'),
+    );
+    request.headers.addAll({'Authorization': 'Bearer $_token'});
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+    final streamedResponse = await request.send().timeout(
+      const Duration(seconds: 30),
+      onTimeout: () => throw ApiException('验证超时'),
+    );
+
+    final resp = await http.Response.fromStream(streamedResponse);
+    return _parseResponse(resp);
+  }
+
+  /// 获取数据契约
+  Future<Map<String, dynamic>> getDataContract() async {
+    final result = await _get('/api/v1/pipeline/contract');
+    if (result['success'] == true) {
+      return result['data'] ?? {};
+    }
+    return {};
+  }
+
+  /// 获取质量报告
+  Future<Map<String, dynamic>> getQualityReport({String? city, int? year}) async {
+    final params = <String, String>{};
+    if (city != null) params['city'] = city;
+    if (year != null) params['year'] = year.toString();
+    final result = await _get('/api/v1/pipeline/quality-report', params: params.isNotEmpty ? params : null);
+    if (result['success'] == true) {
+      return result['data'] ?? {};
+    }
+    return {};
+  }
 
   /// 获取上传历史
   Future<List<Map<String, dynamic>>> getUploadHistory() async {

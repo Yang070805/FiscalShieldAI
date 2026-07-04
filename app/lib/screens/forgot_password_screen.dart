@@ -84,6 +84,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     users[userIndex]['pwd'] = pwd;
     await prefs.setString('users', jsonEncode(users));
+    await prefs.commit();
 
     setState(() => _isLoading = false);
     _showSuccess('密码重置成功，请重新登录');

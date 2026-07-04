@@ -3,10 +3,15 @@ AI 引擎服务层 — 包装 ai_engine 的推理和报告模块
 """
 
 import json
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+import torch
+
+logger = logging.getLogger(__name__)
 
 # 将 ai_engine 目录加入 Python 路径
 AI_ENGINE_DIR = Path(__file__).resolve().parent.parent.parent / "ai_engine"
@@ -78,6 +83,125 @@ def _simulated_predict(city: str, year: int) -> dict:
     }
 
 
+def _fallback_predict(city: str, year: int) -> dict:
+    """
+    陌生城市兜底预测：用5城均值作为输入
+    
+    对于没有历史数据的城市，使用已知5个城市的平均指标作为输入，
+    让模型进行推理。这样至少能给出一个基于模型的预测结果，
+    而不是返回错误。
+    """
+    predictor = _get_predictor()
+    
+    if predictor == "failed" or predictor is None:
+        return _simulated_predict(city, year)
+    
+    try:
+        import pandas as pd
+        import numpy as np
+        
+        # 加载所有城市的平均数据
+        data_dir = AI_ENGINE_DIR / "data"
+        all_means = []
+        
+        for f in data_dir.glob("*_data.xlsx"):
+            df = pd.read_excel(str(f))
+            # 取最近3年的平均值
+            numeric_cols = df.select_dtypes(include=[np.number]).columns
+            recent = df.tail(3)
+            means = recent[numeric_cols].mean()
+            all_means.append(means)
+        
+        if not all_means:
+            return _simulated_predict(city, year)
+        
+        # 计算5城均值
+        avg_df = pd.DataFrame(all_means).mean()
+        
+        # 构造输入数据（模仿真实数据格式）
+        # 9个核心指标
+        indicators = ['负债率(%)', '债务率(%)', '赤字率(%)', '现金短期债务比', 
+                      '短期债务占比(%)', '存贷比(%)', '不良贷款率(%)', '拨备覆盖率(%)', '资本充足率(%)']
+        
+        # 创建3年窗口（复制3次均值）
+        input_data = []
+        for _ in range(3):
+            row = []
+            for ind in indicators:
+                if ind in avg_df.index:
+                    row.append(float(avg_df[ind]))
+                else:
+                    row.append(0.0)
+            input_data.append(row)
+        
+        input_tensor = np.array(input_data, dtype=np.float32)
+        input_tensor = torch.FloatTensor(input_tensor).unsqueeze(0).to(predictor.device)
+        
+        # 预测
+        with torch.no_grad():
+            fiscal_logits, finance_logits = predictor.model(input_tensor)
+            
+            # 获取预测结果
+            fiscal_probs = torch.softmax(fiscal_logits, dim=1)[0]
+            finance_probs = torch.softmax(finance_logits, dim=1)[0]
+            
+            fiscal_level = fiscal_probs.argmax().item()
+            finance_level = finance_probs.argmax().item()
+            
+            # 计算综合风险分数
+            fiscal_conf = fiscal_probs[fiscal_level].item()
+            finance_conf = finance_probs[finance_level].item()
+            overall_conf = (fiscal_conf + finance_conf) / 2
+            
+            # 转换为风险等级
+            level_names = ["低风险", "中等偏低", "中等", "中等偏高", "高风险"]
+            fiscal_level_name = level_names[fiscal_level]
+            finance_level_name = level_names[finance_level]
+            
+            # 计算风险评分（0-100）
+            risk_score = overall_conf * 100
+            
+            # 判断趋势
+            if fiscal_level >= 3 or finance_level >= 3:
+                trend = "rising"
+            elif fiscal_level <= 1 and finance_level <= 1:
+                trend = "stable"
+            else:
+                trend = "stable"
+            
+            return {
+                "city": city,
+                "year": year,
+                "risk_score": round(risk_score, 1),
+                "risk_level": _level_to_en(fiscal_level_name),
+                "trend": trend,
+                "detail": {
+                    "fiscal_risk": {
+                        "level": fiscal_level_name,
+                        "level_index": fiscal_level,
+                        "confidence": round(fiscal_conf, 4),
+                    },
+                    "finance_risk": {
+                        "level": finance_level_name,
+                        "level_index": finance_level,
+                        "confidence": round(finance_conf, 4),
+                    },
+                    "warning": {
+                        "level": "陌生城市",
+                        "color": "#FF9800",
+                        "message": f"{city}为陌生城市，预测基于5城均值，仅供参考",
+                        "threshold_met": False,
+                    },
+                    "explanation": f"【{city}预测说明】\n该城市不在模型训练数据中，预测基于南京、苏州、无锡、常州、镇江5个城市的平均指标。\n结果仅供参考，如需精确预测，请上传该城市的历史数据。",
+                    "data_years": [],
+                },
+                "source": "fallback",
+            }
+    except Exception as e:
+        logger.error(f"兜底预测失败: {e}", exc_info=True)
+        return _simulated_predict(city, year)
+
+
 def predict_by_city(city: str, year: int) -> dict:
     """
     城市预测接口
@@ -94,7 +218,9 @@ def predict_by_city(city: str, year: int) -> dict:
 
         data_file = AI_ENGINE_DIR / "data" / f"{city}_data.xlsx"
         if not data_file.exists():
-            return {"error": f"未找到 {city} 的历史数据", "available_cities": get_available_cities()}
+            # 陌生城市：使用5城均值作为兜底输入
+            logger.info(f"{city} 无历史数据，使用5城均值兜底")
+            return _fallback_predict(city, year)
 
         df = pd.read_excel(str(data_file))
         available_years = sorted(df["年份"].unique())

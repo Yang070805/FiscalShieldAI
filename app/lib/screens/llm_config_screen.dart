@@ -116,6 +116,7 @@ class _LlmConfigScreenState extends State<LlmConfigScreen> {
     await prefs.setString('${_accountPrefix}llm_appid_$name', _appIdController.text.trim());
     await prefs.setString('${_accountPrefix}llm_url_$name', _baseUrlController.text.trim());
     await prefs.setString('${_accountPrefix}llm_model_$name', _modelController.text.trim());
+    await prefs.commit(); // 确保持久化
     _configuredKeys[name] = _apiKeyController.text.trim();
     _configuredUrls[name] = _baseUrlController.text.trim();
     _selectedModels[name] = _modelController.text.trim();

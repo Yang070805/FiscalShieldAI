@@ -13,6 +13,7 @@ from api.v1.endpoints.upload import router as upload_router
 from api.v1.endpoints.training import router as training_router
 from api.v1.endpoints.monitor import router as monitor_router
 from api.v1.endpoints.llm_config import router as llm_config_router
+from api.v1.endpoints.data_pipeline import router as data_pipeline_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -24,3 +25,4 @@ api_router.include_router(upload_router)
 api_router.include_router(training_router)
 api_router.include_router(monitor_router)
 api_router.include_router(llm_config_router)
+api_router.include_router(data_pipeline_router)
