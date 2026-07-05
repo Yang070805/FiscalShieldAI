@@ -32,7 +32,7 @@ class _DashboardTabState extends State<DashboardTab> with RouteAware {
   String? _reportContent;
   String? _error;
   List<String> _cities = ['南京', '苏州', '无锡', '常州', '镇江']; // 默认值，会从后端覆盖
-  final List<int> _years = [2026, 2025, 2024, 2023];
+  final List<int> _years = List.generate(21, (i) => DateTime.now().year - i);
 
   // ── 企业版状态 ──
   String? _company;

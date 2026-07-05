@@ -307,11 +307,11 @@ class _UploadScreenState extends State<UploadScreen> {
         ),
       ),
       const SizedBox(height: 12),
-      // 年份选择
+      // 年份选择（当前年份往前推20年）
       Row(children: [
         Text('年份: ', style: TextStyle(fontSize: 14, color: AppColors.paper)),
         const SizedBox(width: 8),
-        ...[2026, 2025, 2024, 2023].map((y) => Padding(
+        ...List.generate(21, (i) => DateTime.now().year - i).map((y) => Padding(
           padding: const EdgeInsets.only(right: 8),
           child: ChoiceChip(
             label: Text('$y', style: TextStyle(fontSize: 12)),
