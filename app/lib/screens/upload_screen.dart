@@ -28,6 +28,7 @@ class _UploadScreenState extends State<UploadScreen> {
   final _cityController = TextEditingController();
   int _year = 2026;
   String _permission = 'internal';
+  bool _trainingEnabled = false; // 训练回流（附加选项）
   bool _skipDedup = false;
   bool _skipTs = false;
 
@@ -114,11 +115,12 @@ class _UploadScreenState extends State<UploadScreen> {
     }
     setState(() { _processing = true; _error = null; });
     try {
+      final perm = _trainingEnabled ? '$_permission+training' : _permission;
       final result = await _api.uploadWithPipeline(
         filePath: _pickedFilePath!,
         city: city,
         year: _year,
-        permission: _permission,
+        permission: perm,
         skipDedup: _skipDedup,
         skipTs: _skipTs,
       );
@@ -337,11 +339,17 @@ class _UploadScreenState extends State<UploadScreen> {
       // 权限选择
       Text('数据权限', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
       const SizedBox(height: 8),
-      _permissionOption('public', '公开', '民用端可查看', Icons.public_rounded, AppColors.celadon),
-      const SizedBox(height: 6),
-      _permissionOption('internal', '内部', '仅政务/企业端可见', Icons.lock_rounded, AppColors.sky),
-      const SizedBox(height: 6),
-      _permissionOption('private', '训练回流', '数据进入模型训练pipeline', Icons.smart_toy_rounded, AppColors.warmApricot),
+      // 公开 / 内部（互斥）
+      Row(children: [
+        Expanded(child: _permissionCheckOption('public', '公开', '民用端可查看', Icons.public_rounded, AppColors.celadon)),
+        const SizedBox(width: 12),
+        Expanded(child: _permissionCheckOption('internal', '内部', '仅政务/企业端可见', Icons.lock_rounded, AppColors.sky)),
+      ]),
+      const SizedBox(height: 8),
+      // 训练回流（附加选项）
+      _buildCheckbox('同时用于模型训练（训练回流）', _trainingEnabled, (v) {
+        setState(() => _trainingEnabled = v);
+      }),
       const SizedBox(height: 12),
       // 管道选项
       Text('管道选项', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
@@ -474,6 +482,33 @@ class _UploadScreenState extends State<UploadScreen> {
         textAlign: TextAlign.center,
         style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
     ]);
+  }
+
+  Widget _permissionCheckOption(String value, String title, String desc, IconData icon, Color color) {
+    final isSelected = _permission == value;
+    return GestureDetector(
+      onTap: () => setState(() => _permission = value),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.08) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isSelected ? color.withOpacity(0.5) : AppColors.glassBorder, width: isSelected ? 1.5 : 1),
+        ),
+        child: Row(children: [
+          Icon(icon, size: 20, color: isSelected ? color : AppColors.paperDim),
+          const SizedBox(width: 10),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isSelected ? color : AppColors.paper, decoration: TextDecoration.none)),
+              Text(desc, style: TextStyle(fontSize: 11, color: AppColors.paperDim)),
+            ],
+          )),
+          if (isSelected) Icon(Icons.check_circle_rounded, size: 20, color: color),
+        ]),
+      ),
+    );
   }
 
   Widget _permissionOption(String value, String title, String desc, IconData icon, Color color) {
