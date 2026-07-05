@@ -48,10 +48,10 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
-    # 企业注册：自动创建企业 + 绑定管理员
+    # 企业/政务注册：自动创建机构 + 绑定管理员
     enterprise_id = None
     enterprise_role = None
-    if req.role == "enterprise" and req.enterprise_name:
+    if req.role in ("enterprise", "gov") and req.enterprise_name:
         # 检查信用代码
         existing = await db.execute(
             select(Enterprise).where(Enterprise.credit_code == req.credit_code)

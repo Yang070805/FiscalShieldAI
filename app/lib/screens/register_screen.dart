@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/colors.dart';
 import '../config/fonts.dart';
 import '../widgets/ink_world.dart';
@@ -83,6 +84,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final pwd = _pwdController.text;
     final confirm = _pwdConfirmController.text;
     final isEnterprise = _selectedRole == '企业版';
+    final isGov = _selectedRole == '政务版';
 
     // 表单验证
     if (_selectedRole == null) { _showError('请选择注册角色'); return; }
@@ -92,31 +94,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (pwd.length < 6) { _showError('密码至少6位'); return; }
     if (pwd != confirm) { _showError('两次密码不一致'); return; }
 
-    // 企业注册额外验证
-    if (isEnterprise) {
-      if (_enterpriseNameController.text.trim().isEmpty) { _showError('请输入企业名称'); return; }
-      if (_creditCodeController.text.trim().length < 15) { _showError('请输入15-20位统一社会信用代码'); return; }
-      if (_enterprisePhoneController.text.trim().length != 11) { _showError('请输入企业联系电话'); return; }
+    // 企业/政务注册额外验证
+    if (isEnterprise || isGov) {
+      if (_enterpriseNameController.text.trim().isEmpty) { _showError(isGov ? '请输入机构名称' : '请输入企业名称'); return; }
+      if (_creditCodeController.text.trim().length < 15) { _showError('请输入15-20位机构代码'); return; }
+      if (_enterprisePhoneController.text.trim().length != 11) { _showError('请输入联系电话'); return; }
     }
 
     setState(() => _isLoading = true);
 
     try {
       final roleCode = _roleMap[_selectedRole!] ?? 'citizen';
+      // 企业/政务注册额外字段
+      if (isEnterprise || isGov) {
+        body['enterprise_name'] = _enterpriseNameController.text.trim();
+        body['credit_code'] = _creditCodeController.text.trim();
+        body['enterprise_phone'] = _enterprisePhoneController.text.trim();
+      }
       final result = await _api.register(
         phone: phone,
         password: pwd,
         nickname: nickname,
         role: roleCode,
-        enterpriseName: isEnterprise ? _enterpriseNameController.text.trim() : null,
-        creditCode: isEnterprise ? _creditCodeController.text.trim() : null,
-        enterprisePhone: isEnterprise ? _enterprisePhoneController.text.trim() : null,
+        enterpriseName: (isEnterprise || isGov) ? _enterpriseNameController.text.trim() : null,
+        creditCode: (isEnterprise || isGov) ? _creditCodeController.text.trim() : null,
+        enterprisePhone: (isEnterprise || isGov) ? _enterprisePhoneController.text.trim() : null,
       );
 
       if (!mounted) return;
       setState(() => _isLoading = false);
 
       if (result['success'] == true) {
+        // 清除旧账号的缓存配置（LLM设置、主题等）
+        final prefs = await SharedPreferences.getInstance();
+        final keys = ['llmEnabled', 'llmModel', 'llmApiKey', 'llmEndpoint',
+          'loginPhone', 'loginRole', 'loginRegisteredRole', 'loginNickname',
+          'enterpriseId', 'enterpriseRole'];
+        for (final k in keys) await prefs.remove(k);
+        // 清除带前缀的LLM配置
+        final allKeys = prefs.getKeys();
+        for (final k in allKeys) {
+          if (k.contains('llm_key_') || k.contains('llm_url_') || k.contains('llm_model_') || k.contains('llm_appid_')) {
+            await prefs.remove(k);
+          }
+        }
         _showSuccess('注册成功，请登录');
         await Future.delayed(const Duration(milliseconds: 1000));
         if (mounted) Navigator.pop(context);
@@ -230,22 +251,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       child: Icon(_obscureConfirm ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                                           size: 20, color: _confirmFocused ? AppColors.celadon : AppColors.paperDim),
                                     )),
-                                // 企业注册额外字段
-                                if (_selectedRole == '企业版') ...[
+                                // 企业/政务注册额外字段
+                                if (_selectedRole == '企业版' || _selectedRole == '政务版') ...[
                                   const SizedBox(height: 20),
                                   Divider(color: AppColors.glassBorder),
                                   const SizedBox(height: 12),
                                   Row(children: [
-                                    Icon(Icons.business_rounded, size: 16, color: AppColors.sky),
+                                    Icon(_selectedRole == '政务版' ? Icons.account_balance_rounded : Icons.business_rounded, size: 16, color: _selectedRole == '政务版' ? AppColors.celadon : AppColors.sky),
                                     const SizedBox(width: 8),
-                                    Text('企业信息', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.sky, decoration: TextDecoration.none)),
+                                    Text(_selectedRole == '政务版' ? '机构信息' : '企业信息', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _selectedRole == '政务版' ? AppColors.celadon : AppColors.sky, decoration: TextDecoration.none)),
                                   ]),
                                   const SizedBox(height: 14),
-                                  _buildInput(_enterpriseNameController, '企业名称', Icons.business_center_rounded, TextInputType.text),
+                                  _buildInput(_enterpriseNameController, _selectedRole == '政务版' ? '机构名称' : '企业名称', _selectedRole == '政务版' ? Icons.account_balance_rounded : Icons.business_center_rounded, TextInputType.text),
                                   const SizedBox(height: 14),
-                                  _buildInput(_creditCodeController, '统一社会信用代码', Icons.numbers_rounded, TextInputType.text, maxLength: 20),
+                                  _buildInput(_creditCodeController, '机构代码', Icons.numbers_rounded, TextInputType.text, maxLength: 20),
                                   const SizedBox(height: 14),
-                                  _buildInput(_enterprisePhoneController, '企业联系电话', Icons.phone_rounded, TextInputType.phone, maxLength: 11),
+                                  _buildInput(_enterprisePhoneController, '联系电话', Icons.phone_rounded, TextInputType.phone, maxLength: 11),
                                 ],
                                 const SizedBox(height: 28),
                                 // 注册按钮

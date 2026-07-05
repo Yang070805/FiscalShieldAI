@@ -4,10 +4,11 @@ import '../config/colors.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_widgets.dart';
 
-/// 企业管理员 — 成员管理 Tab
+/// 管理员 — 成员管理 Tab（企业版/政务版通用）
 class EnterpriseAdminTab extends StatefulWidget {
   final ApiService api;
-  const EnterpriseAdminTab({super.key, required this.api});
+  final String role; // 'enterprise' or 'gov'
+  const EnterpriseAdminTab({super.key, required this.api, required this.role});
 
   @override
   State<EnterpriseAdminTab> createState() => _EnterpriseAdminTabState();
@@ -209,7 +210,7 @@ class _EnterpriseAdminTabState extends State<EnterpriseAdminTab> {
           Row(children: [
             Icon(Icons.admin_panel_settings_rounded, size: 22, color: AppColors.celadon),
             const SizedBox(width: 8),
-            Text('企业管理', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.paper, decoration: TextDecoration.none)),
+            Text(widget.role == 'gov' ? '机构管理' : '企业管理', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.paper, decoration: TextDecoration.none)),
           ]),
           const SizedBox(height: 4),
           Text('成员管理 · 权限配置', style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
@@ -223,7 +224,7 @@ class _EnterpriseAdminTabState extends State<EnterpriseAdminTab> {
                 Row(children: [
                   Icon(Icons.business_rounded, size: 18, color: AppColors.sky),
                   const SizedBox(width: 8),
-                  Text('企业信息', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+                  Text(widget.role == 'gov' ? '机构信息' : '企业信息', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
                 ]),
                 const SizedBox(height: 12),
                 _infoRow('企业名称', _enterpriseInfo!['name'] ?? '-'),

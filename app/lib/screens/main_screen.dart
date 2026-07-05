@@ -37,7 +37,7 @@ class _MainScreenState extends State<MainScreen> {
 
   String get _roleName => _roleNames[_currentRole] ?? '民用版';
 
-  bool get _isEnterpriseAdmin => _currentRole == 'enterprise' && _enterpriseRole == 'admin';
+  bool get _isEnterpriseAdmin => (_currentRole == 'enterprise' || _currentRole == 'gov') && _enterpriseRole == 'admin';
 
   @override
   void initState() {
@@ -169,7 +169,7 @@ class _MainScreenState extends State<MainScreen> {
         return _buildFeatureTab();
       case 2:
         // 企业管理员第2个是管理tab，其他版本第2个是我的
-        if (_isEnterpriseAdmin) return EnterpriseAdminTab(api: _api);
+        if (_isEnterpriseAdmin) return EnterpriseAdminTab(api: _api, role: _currentRole);
         return ProfileTab(role: _currentRole, isGuest: widget.isGuest, onRoleSwitch: switchRole);
       case 3:
         // 企业管理员第3个是我的
