@@ -307,24 +307,28 @@ class _UploadScreenState extends State<UploadScreen> {
         ),
       ),
       const SizedBox(height: 12),
-      // 年份选择（当前年份往前推20年，可横向滚动）
+      // 年份选择（下拉框）
       Row(children: [
         Text('年份: ', style: TextStyle(fontSize: 14, color: AppColors.paper)),
         const SizedBox(width: 8),
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: List.generate(21, (i) => DateTime.now().year - i).map((y) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text('$y', style: TextStyle(fontSize: 12)),
-                  selected: _year == y,
-                  onSelected: (_) => setState(() => _year = y),
-                  selectedColor: AppColors.celadon.withOpacity(0.2),
-                  labelStyle: TextStyle(color: _year == y ? AppColors.celadon : AppColors.paperDim),
-                ),
-              )).toList(),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppColors.cardBg.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.glassBorder),
+            ),
+            child: DropdownButton<int>(
+              value: _year,
+              isExpanded: true,
+              dropdownColor: AppColors.cardBg,
+              underline: const SizedBox(),
+              style: TextStyle(color: AppColors.paper, fontSize: 14),
+              items: List.generate(21, (i) => DateTime.now().year - i)
+                  .map((y) => DropdownMenuItem(value: y, child: Text('$y年')))
+                  .toList(),
+              onChanged: (v) => setState(() => _year = v!),
             ),
           ),
         ),
