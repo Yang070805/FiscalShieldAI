@@ -157,9 +157,9 @@ async def upload_with_pipeline(
     
     await db.commit()
     
-    # 4. 如果是private权限，触发训练
+    # 4. 如果包含训练回流，触发训练
     training_triggered = False
-    if permission == "private":
+    if '+training' in permission:
         try:
             from services.training_pipeline import start_training
             start_training(epochs=50, incremental=True)

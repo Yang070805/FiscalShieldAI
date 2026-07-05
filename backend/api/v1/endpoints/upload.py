@@ -121,12 +121,13 @@ async def upload_confirm(
     permission 说明：
     - public:   公开，民用端可在仪表盘查看
     - internal: 内部使用，仅政务/企业端可见
-    - private:  对我们也公开，数据进入训练pipeline优化神经网络
+    - public+training:   公开 + 训练回流
+    - internal+training: 内部 + 训练回流
     """
     if not req.data:
         raise ParamsError("数据为空")
 
-    valid_permissions = ("public", "internal", "private")
+    valid_permissions = ("public", "internal", "public+training", "internal+training")
     if req.permission not in valid_permissions:
         raise ParamsError(f"权限必须是: {', '.join(valid_permissions)}")
 
@@ -166,8 +167,8 @@ async def upload_confirm(
 
     await db.commit()
 
-    # 如果是 private 权限，自动触发训练回流
-    training_needed = req.permission == "private"
+    # 如果包含训练回流，自动触发训练
+    training_needed = '+training' in req.permission
     training_result = None
     if training_needed:
         try:
