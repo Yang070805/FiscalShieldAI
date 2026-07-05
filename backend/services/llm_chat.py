@@ -52,7 +52,7 @@ async def call_llm_stream(
     # 构建消息
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-    # 添加上下文
+    # 添加上下文（含预测数据）
     context_parts = []
     if city:
         context_parts.append(f"当前分析城市：{city}")
@@ -60,6 +60,21 @@ async def call_llm_stream(
         context_parts.append(f"数据年份：{year}")
     if context_parts:
         messages.append({"role": "system", "content": "\n".join(context_parts)})
+
+    # 如果有城市和年份，自动查询预测数据注入上下文
+    if city and year:
+        try:
+            from services.ai_engine import predict_by_city
+            pred = predict_by_city(city, year)
+            if "error" not in pred:
+                import json
+                data_text = json.dumps(pred, ensure_ascii=False, indent=2)
+                messages.append({
+                    "role": "system",
+                    "content": f"以下是{city} {year}年的财政风险预测数据，请基于此数据回答用户问题：\n{data_text}",
+                })
+        except Exception as e:
+            print(f"[llm_chat] 查询预测数据失败: {e}")
 
     # 添加历史对话
     if history:
