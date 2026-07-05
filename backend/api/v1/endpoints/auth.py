@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from db.session import get_db
 from models.user import User
+from models.enterprise import Enterprise
 from schemas.user import (
     RegisterRequest,
     LoginRequest,
@@ -25,7 +26,7 @@ router = APIRouter(prefix="/auth", tags=["认证"])
 
 @router.post("/register")
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    """注册新用户"""
+    """注册新用户（企业注册时自动创建企业）"""
     # 检查手机号是否已注册
     result = await db.execute(select(User).where(User.phone == req.phone))
     if result.scalar_one_or_none():
@@ -47,8 +48,39 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
+    # 企业注册：自动创建企业 + 绑定管理员
+    enterprise_id = None
+    enterprise_role = None
+    if req.role == "enterprise" and req.enterprise_name:
+        # 检查信用代码
+        existing = await db.execute(
+            select(Enterprise).where(Enterprise.credit_code == req.credit_code)
+        )
+        if existing.scalar_one_or_none():
+            raise ParamsError("该统一社会信用代码已注册")
+
+        enterprise = Enterprise(
+            name=req.enterprise_name,
+            credit_code=req.credit_code,
+            contact_phone=req.enterprise_phone or req.phone,
+        )
+        db.add(enterprise)
+        await db.commit()
+        await db.refresh(enterprise)
+
+        user.enterprise_id = enterprise.id
+        user.enterprise_role = "admin"
+        await db.commit()
+
+        enterprise_id = enterprise.id
+        enterprise_role = "admin"
+
     # 签发 Token
-    token = create_access_token(user.id, user.role)
+    token = create_access_token(
+        user.id, user.role,
+        enterprise_id=enterprise_id,
+        enterprise_role=enterprise_role,
+    )
 
     return ok(
         data=TokenResponse(
@@ -68,7 +100,11 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not user or not verify_password(req.password, user.password_hash):
         raise AuthError("手机号或密码错误")
 
-    token = create_access_token(user.id, user.role)
+    token = create_access_token(
+        user.id, user.role,
+        enterprise_id=user.enterprise_id,
+        enterprise_role=user.enterprise_role,
+    )
 
     return ok(
         data=TokenResponse(

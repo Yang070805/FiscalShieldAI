@@ -16,6 +16,10 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=6, max_length=50, description="密码")
     nickname: str = Field(..., min_length=1, max_length=50, description="昵称")
     role: Optional[str] = Field("citizen", description="角色: gov/enterprise/citizen")
+    # 企业注册额外字段
+    enterprise_name: Optional[str] = Field(None, description="企业名称（企业注册时必填）")
+    credit_code: Optional[str] = Field(None, description="统一社会信用代码（企业注册时必填）")
+    enterprise_phone: Optional[str] = Field(None, description="企业联系电话（企业注册时必填）")
 
 
 class LoginRequest(BaseModel):
@@ -39,6 +43,8 @@ class UserResponse(BaseModel):
     nickname: str
     role: str
     avatar: str
+    enterprise_id: Optional[int] = None
+    enterprise_role: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

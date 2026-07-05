@@ -131,6 +131,16 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setString('loginNickname', data['user']['nickname'] ?? '');
       await prefs.setString('loginUserPhone', data['user']['phone'] ?? phone);
       await prefs.setString('loginCreatedAt', data['user']['created_at'] ?? '');
+      // 企业信息
+      final enterpriseId = data['user']['enterprise_id'];
+      final enterpriseRole = data['user']['enterprise_role'];
+      if (enterpriseId != null) {
+        await prefs.setInt('enterpriseId', enterpriseId);
+        await prefs.setString('enterpriseRole', enterpriseRole ?? 'member');
+      } else {
+        await prefs.remove('enterpriseId');
+        await prefs.remove('enterpriseRole');
+      }
       await prefs.commit(); // 确保持久化
 
       if (!mounted) return;

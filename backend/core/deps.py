@@ -53,3 +53,14 @@ def role_required(*allowed_roles: str):
             raise PermissionError(f"需要角色: {', '.join(allowed_roles)}")
         return user
     return checker
+
+
+def enterprise_admin_required():
+    """
+    企业管理员权限检查
+    """
+    async def checker(user: User = Depends(get_current_user)) -> User:
+        if user.role != "enterprise" or user.enterprise_role != "admin":
+            raise PermissionError("需要企业管理员权限")
+        return user
+    return checker

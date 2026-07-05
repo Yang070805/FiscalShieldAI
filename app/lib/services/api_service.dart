@@ -99,12 +99,20 @@ class ApiService {
     required String password,
     required String nickname,
     String role = 'citizen',
+    String? enterpriseName,
+    String? creditCode,
+    String? enterprisePhone,
   }) async {
-    final result = await _post('/api/v1/auth/register', body: {
+    final body = {
       'phone': phone,
       'password': password,
       'nickname': nickname,
       'role': role,
+    };
+    if (enterpriseName != null) body['enterprise_name'] = enterpriseName;
+    if (creditCode != null) body['credit_code'] = creditCode;
+    if (enterprisePhone != null) body['enterprise_phone'] = enterprisePhone;
+    final result = await _post('/api/v1/auth/register', body: body);
     });
     if (result['success'] == true && result['data'] != null) {
       await _saveToken(result['data']['access_token']);
@@ -600,6 +608,85 @@ class ApiService {
       return resp.statusCode == 200;
     } catch (_) {
       return false;
+    }
+  }
+
+  // ═══════════════════ 企业接口 ═══════════════════
+
+  /// 企业注册（将当前用户升级为企业管理员）
+  Future<Map<String, dynamic>> enterpriseRegister({
+    required String enterpriseName,
+    required String creditCode,
+    required String contactPhone,
+  }) async {
+    final result = await _post('/api/v1/enterprise/register', {
+      'enterprise_name': enterpriseName,
+      'credit_code': creditCode,
+      'contact_phone': contactPhone,
+    });
+    if (result['success'] == true) return result['data'] ?? {};
+    throw ApiException(result['message'] ?? '企业注册失败');
+  }
+
+  /// 获取企业信息
+  Future<Map<String, dynamic>> getEnterpriseInfo() async {
+    final result = await _get('/api/v1/enterprise/info');
+    if (result['success'] == true) return result['data'] ?? {};
+    throw ApiException(result['message'] ?? '获取企业信息失败');
+  }
+
+  /// 创建成员
+  Future<Map<String, dynamic>> createMember({
+    required String phone,
+    required String nickname,
+    required String password,
+    String enterpriseRole = 'member',
+  }) async {
+    final result = await _post('/api/v1/enterprise/member/create', {
+      'phone': phone,
+      'nickname': nickname,
+      'password': password,
+      'enterprise_role': enterpriseRole,
+    });
+    if (result['success'] == true) return result['data'] ?? {};
+    throw ApiException(result['message'] ?? '创建成员失败');
+  }
+
+  /// 成员列表
+  Future<List<Map<String, dynamic>>> getMembers() async {
+    final result = await _get('/api/v1/enterprise/member/list');
+    if (result['success'] == true) {
+      return List<Map<String, dynamic>>.from(result['data'] ?? []);
+    }
+    throw ApiException(result['message'] ?? '获取成员列表失败');
+  }
+
+  /// 删除成员
+  Future<void> deleteMember(int memberId) async {
+    final result = await _delete('/api/v1/enterprise/member/$memberId');
+    if (result['success'] != true) {
+      throw ApiException(result['message'] ?? '删除成员失败');
+    }
+  }
+
+  /// 重置成员密码
+  Future<void> resetMemberPassword(int memberId, String newPassword) async {
+    final result = await _post(
+      '/api/v1/enterprise/member/$memberId/reset-password',
+      {'new_password': newPassword},
+    );
+    if (result['success'] != true) {
+      throw ApiException(result['message'] ?? '重置密码失败');
+    }
+  }
+
+  /// 转让管理员
+  Future<void> transferAdmin(int memberId) async {
+    final result = await _post('/api/v1/enterprise/transfer-admin', {
+      'member_id': memberId,
+    });
+    if (result['success'] != true) {
+      throw ApiException(result['message'] ?? '转让管理员失败');
     }
   }
 }

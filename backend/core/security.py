@@ -27,7 +27,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     )
 
 
-def create_access_token(user_id: int, role: str) -> str:
+def create_access_token(user_id: int, role: str, enterprise_id: int = None, enterprise_role: str = None) -> str:
     """签发 JWT Access Token"""
     expire = datetime.now(timezone.utc) + timedelta(hours=settings.JWT_EXPIRE_HOURS)
     payload = {
@@ -35,6 +35,10 @@ def create_access_token(user_id: int, role: str) -> str:
         "role": role,              # 角色
         "exp": expire,             # 过期时间
     }
+    if enterprise_id is not None:
+        payload["enterprise_id"] = enterprise_id
+    if enterprise_role is not None:
+        payload["enterprise_role"] = enterprise_role
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 

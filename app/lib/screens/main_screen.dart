@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/colors.dart';
 
 import '../widgets/ink_world.dart';
@@ -7,6 +8,7 @@ import 'dashboard_tab.dart';
 import 'profile_tab.dart';
 import 'settings_screen.dart';
 import 'favorites_screen.dart';
+import 'enterprise_admin_tab.dart';
 import '../services/api_service.dart';
 
 /// 主框架 — 底部导航 + 角色适配
@@ -24,6 +26,7 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   late String _currentRole;
   final ApiService _api = ApiService();
+  String? _enterpriseRole; // admin / member / null
 
   // 角色 code → 中文名
   static const Map<String, String> _roleNames = {
@@ -34,10 +37,19 @@ class _MainScreenState extends State<MainScreen> {
 
   String get _roleName => _roleNames[_currentRole] ?? '民用版';
 
+  bool get _isEnterpriseAdmin => _currentRole == 'enterprise' && _enterpriseRole == 'admin';
+
   @override
   void initState() {
     super.initState();
     _currentRole = widget.role;
+    _loadEnterpriseRole();
+  }
+
+  Future<void> _loadEnterpriseRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    final role = prefs.getString('enterpriseRole');
+    if (mounted) setState(() => _enterpriseRole = role);
   }
 
   void switchRole(String newRole) {
@@ -152,10 +164,16 @@ class _MainScreenState extends State<MainScreen> {
       case 0:
         return DashboardTab(role: _currentRole, isGuest: widget.isGuest);
       case 1:
-        // 政务版/企业版中间tab显示功能页，民用版显示搜索
+        // 民用版第1个是搜索，其他版本第1个是功能页
         if (_currentRole == 'citizen') return _buildCivilianSearch();
         return _buildFeatureTab();
       case 2:
+        // 企业管理员第2个是管理tab，其他版本第2个是我的
+        if (_isEnterpriseAdmin) return EnterpriseAdminTab(api: _api);
+        return ProfileTab(role: _currentRole, isGuest: widget.isGuest, onRoleSwitch: switchRole);
+      case 3:
+        // 企业管理员第3个是我的
+        if (_isEnterpriseAdmin) return ProfileTab(role: _currentRole, isGuest: widget.isGuest, onRoleSwitch: switchRole);
         return ProfileTab(role: _currentRole, isGuest: widget.isGuest, onRoleSwitch: switchRole);
       default:
         return DashboardTab(role: _currentRole, isGuest: widget.isGuest);
@@ -311,21 +329,26 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildBottomNav() {
     final items = <Map<String, dynamic>>[]
-      ..add({'icon': Icons.dashboard_rounded, 'label': '仪表盘'})
-      ..add({'icon': Icons.person_rounded, 'label': '我的'});
+      ..add({'icon': Icons.dashboard_rounded, 'label': '仪表盘'});
 
     // 政务版专属：监控入口
     if (_currentRole == 'gov') {
-      items.insert(1, {'icon': Icons.shield_rounded, 'label': '监控'});
+      items.add({'icon': Icons.shield_rounded, 'label': '监控'});
     }
-    // 企业版专属：分析入口
+    // 企业版：分析入口
     if (_currentRole == 'enterprise') {
-      items.insert(1, {'icon': Icons.analytics_rounded, 'label': '分析'});
+      items.add({'icon': Icons.analytics_rounded, 'label': '分析'});
+    }
+    // 企业管理员：管理入口
+    if (_isEnterpriseAdmin) {
+      items.add({'icon': Icons.admin_panel_settings_rounded, 'label': '管理'});
     }
     // 民用版专属：搜索入口
     if (_currentRole == 'citizen') {
       items.insert(0, {'icon': Icons.search_rounded, 'label': '搜索'});
     }
+    // 我的 tab（始终在最后）
+    items.add({'icon': Icons.person_rounded, 'label': '我的'});
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 8),

@@ -57,6 +57,15 @@ class _UploadScreenState extends State<UploadScreen> {
       final XFile? file = await picker.pickMedia();
 
       if (file != null) {
+        // 前端预校验：检查文件扩展名
+        final ext = '.${file.name.split('.').last.toLowerCase()}';
+        const allowed = {'.xlsx', '.xls', '.csv'};
+        if (!allowed.contains(ext)) {
+          setState(() {
+            _error = '不支持的文件格式: $ext\n仅支持 .xlsx、.xls、.csv 文件';
+          });
+          return;
+        }
         setState(() {
           _pickedFilePath = file.path;
           _pickedFileName = file.name;
@@ -249,9 +258,17 @@ class _UploadScreenState extends State<UploadScreen> {
               : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Icon(Icons.cloud_upload_rounded, size: 36, color: AppColors.paperDim),
                   const SizedBox(height: 8),
-                  Text('点击选择 Excel / CSV 文件', style: TextStyle(fontSize: 14, color: AppColors.paperDim)),
-                  const SizedBox(height: 4),
-                  Text('支持 .xlsx .xls .csv', style: TextStyle(fontSize: 11, color: AppColors.paperDim.withOpacity(0.6))),
+                  Text('点击选择数据文件', style: TextStyle(fontSize: 14, color: AppColors.paperDim)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.celadon.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.celadon.withOpacity(0.3)),
+                    ),
+                    child: Text('仅支持 .xlsx  .xls  .csv', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.celadon)),
+                  ),
                 ]),
         ),
       ),
