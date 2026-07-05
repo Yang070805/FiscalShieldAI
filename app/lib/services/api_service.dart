@@ -113,7 +113,6 @@ class ApiService {
     if (creditCode != null) body['credit_code'] = creditCode;
     if (enterprisePhone != null) body['enterprise_phone'] = enterprisePhone;
     final result = await _post('/api/v1/auth/register', body: body);
-    });
     if (result['success'] == true && result['data'] != null) {
       await _saveToken(result['data']['access_token']);
     }

@@ -103,18 +103,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final roleCode = _roleMap[_selectedRole!] ?? 'citizen';
-      final Map<String, dynamic> body = {
-        'phone': phone,
-        'password': pwd,
-        'nickname': nickname,
-        'role': roleCode,
-      };
-      // 企业注册额外字段
-      if (isEnterprise) {
-        body['enterprise_name'] = _enterpriseNameController.text.trim();
-        body['credit_code'] = _creditCodeController.text.trim();
-        body['enterprise_phone'] = _enterprisePhoneController.text.trim();
-      }
       final result = await _api.register(
         phone: phone,
         password: pwd,
