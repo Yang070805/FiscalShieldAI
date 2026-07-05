@@ -9,7 +9,7 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  String _baseUrl = 'http://10.184.67.48:8000'; // 真机访问电脑（手机热点）
+  String _baseUrl = 'http://10.0.2.2:8000'; // 模拟器默认，真机请在设置中修改
   String? _token;
   String? _refreshToken;
 
@@ -19,10 +19,24 @@ class ApiService {
     if (baseUrl != null) _baseUrl = baseUrl;
   }
 
-  /// 从本地恢复 Token
+  /// 从本地恢复 Token 和后端地址
   Future<void> restoreToken() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
+    final savedUrl = prefs.getString('backend_url');
+    if (savedUrl != null && savedUrl.isNotEmpty) {
+      _baseUrl = savedUrl;
+    }
+  }
+
+  /// 获取当前后端地址
+  String get baseUrl => _baseUrl;
+
+  /// 保存后端地址
+  Future<void> saveBaseUrl(String url) async {
+    _baseUrl = url;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('backend_url', url);
   }
 
   /// 保存 Token
@@ -65,30 +79,52 @@ class ApiService {
     return body;
   }
 
+  /// 重试包装器：网络错误自动重试最多2次
+  Future<T> _withRetry<T>(Future<T> Function() fn, {int maxRetries = 2}) async {
+    for (int i = 0; i <= maxRetries; i++) {
+      try {
+        return await fn();
+      } on ApiException catch (e) {
+        if (i == maxRetries || e.code == 401 || e.code == 403) rethrow;
+        await Future.delayed(Duration(milliseconds: 500 * (i + 1)));
+      } on Exception catch (e) {
+        if (i == maxRetries) throw ApiException('网络错误: $e');
+        await Future.delayed(Duration(milliseconds: 500 * (i + 1)));
+      }
+    }
+    throw ApiException('请求失败');
+  }
+
   /// GET 请求
   Future<Map<String, dynamic>> _get(String path, {Map<String, String>? params}) async {
-    final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: params);
-    final resp = await http.get(uri, headers: _headers).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () => throw ApiException('请求超时'),
-    );
-    return _parseResponse(resp);
+    return _withRetry(() async {
+      final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: params);
+      final resp = await http.get(uri, headers: _headers).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw ApiException('请求超时'),
+      );
+      return _parseResponse(resp);
+    });
   }
 
   /// POST 请求
   Future<Map<String, dynamic>> _post(String path, {Map<String, dynamic>? body}) async {
-    final resp = await http
-        .post(Uri.parse('$_baseUrl$path'), headers: _headers, body: jsonEncode(body ?? {}))
-        .timeout(const Duration(seconds: 15), onTimeout: () => throw ApiException('请求超时'));
-    return _parseResponse(resp);
+    return _withRetry(() async {
+      final resp = await http
+          .post(Uri.parse('$_baseUrl$path'), headers: _headers, body: jsonEncode(body ?? {}))
+          .timeout(const Duration(seconds: 15), onTimeout: () => throw ApiException('请求超时'));
+      return _parseResponse(resp);
+    });
   }
 
   /// DELETE 请求
   Future<Map<String, dynamic>> _delete(String path) async {
-    final resp = await http
-        .delete(Uri.parse('$_baseUrl$path'), headers: _headers)
-        .timeout(const Duration(seconds: 15), onTimeout: () => throw ApiException('请求超时'));
-    return _parseResponse(resp);
+    return _withRetry(() async {
+      final resp = await http
+          .delete(Uri.parse('$_baseUrl$path'), headers: _headers)
+          .timeout(const Duration(seconds: 15), onTimeout: () => throw ApiException('请求超时'));
+      return _parseResponse(resp);
+    });
   }
 
   // ==================== 认证 ====================

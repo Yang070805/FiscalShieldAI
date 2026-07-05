@@ -14,9 +14,7 @@ final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<v
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 真机用电脑局域网IP，模拟器用 10.0.2.2
-  ApiService().configure(baseUrl: 'http://10.184.67.48:8000');
-  await ApiService().restoreToken();
+  await ApiService().restoreToken(); // 从本地恢复Token和后端地址
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
@@ -30,13 +28,30 @@ class FiscalShieldApp extends StatefulWidget {
   State<FiscalShieldApp> createState() => _FiscalShieldAppState();
 }
 
-class _FiscalShieldAppState extends State<FiscalShieldApp> {
+class _FiscalShieldAppState extends State<FiscalShieldApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     themeNotifier.addListener(_onThemeChange);
     AppColors.update(themeNotifier.type);
     _loadTheme();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // 从后台恢复：刷新Token有效性
+        ApiService().restoreToken();
+        break;
+      case AppLifecycleState.paused:
+        // 进入后台：可选保存状态
+        break;
+      default:
+        break;
+    }
   }
 
   Future<void> _loadTheme() async {
@@ -64,6 +79,7 @@ class _FiscalShieldAppState extends State<FiscalShieldApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     themeNotifier.removeListener(_onThemeChange);
     super.dispose();
   }

@@ -52,7 +52,7 @@ async def enterprise_register(
     enterprise = Enterprise(
         name=req.enterprise_name,
         credit_code=req.credit_code,
-        contact_phone=req.enterprise_phone,
+        contact_phone=req.contact_phone,
     )
     db.add(enterprise)
     await db.commit()

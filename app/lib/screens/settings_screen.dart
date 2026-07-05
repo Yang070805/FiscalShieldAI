@@ -22,6 +22,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // 用户信息
   String _userPhone = '';
 
+  // 服务器配置
+  String _backendUrl = 'http://192.168.1.100:8000';
+
   // LLM 配置
   bool _llmEnabled = false;
   String _selectedModel = 'vivo蓝心';
@@ -44,6 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _loadUserInfo();
     _loadLlmConfig();
+    _loadBackendUrl();
   }
 
   Future<void> _loadUserInfo() async {
@@ -83,8 +87,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString('llmModel', _selectedModel);
     await prefs.setString('llmApiKey', _apiKeyController.text.trim());
     await prefs.setString('llmEndpoint', _endpointController.text.trim());
-    await prefs.commit(); // 确保持久化
-    // API Key 存在本地，每次请求时随 Header 一起发送
+    await prefs.commit();
+  }
+
+  Future<void> _loadBackendUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _backendUrl = prefs.getString('backend_url') ?? ApiService().baseUrl;
+    });
+  }
+
+  void _showBackendUrlDialog() {
+    final controller = TextEditingController(text: _backendUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.deepBg,
+        title: Text('后端服务器地址', style: TextStyle(color: AppColors.paper)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('输入后端服务的地址，例如 http://192.168.1.100:8000',
+              style: TextStyle(color: AppColors.paperMid, fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              style: TextStyle(color: AppColors.paper),
+              decoration: InputDecoration(
+                hintText: 'http://IP地址:8000',
+                hintStyle: TextStyle(color: AppColors.paperMid),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.paperMid)),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.sky)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('取消', style: TextStyle(color: AppColors.paperMid)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final url = controller.text.trim();
+              if (url.isNotEmpty) {
+                await ApiService().saveBaseUrl(url);
+                setState(() => _backendUrl = url);
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('后端地址已更新'), backgroundColor: AppColors.sky));
+              }
+            },
+            child: Text('保存', style: TextStyle(color: AppColors.sky)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -112,6 +174,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
+                    // ── 服务器配置 ──
+                    _section('服务器', [
+                      _item(Icons.dns_rounded, '后端地址', _backendUrl, onTap: _showBackendUrlDialog),
+                    ]),
+                    const SizedBox(height: 16),
                     // ── AI 模型配置 ──
                     _section('AI 模配', [
                       _llmToggleItem(),
