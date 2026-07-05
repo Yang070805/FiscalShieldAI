@@ -67,7 +67,6 @@ async def call_llm_stream(
             from services.ai_engine import predict_by_city
             pred = predict_by_city(city, year)
             if "error" not in pred:
-                import json
                 data_text = json.dumps(pred, ensure_ascii=False, indent=2)
                 messages.append({
                     "role": "system",
