@@ -48,7 +48,7 @@ async def upload_with_pipeline(
     file: UploadFile = File(...),
     city: str = Query(..., description="城市名称"),
     year: int = Query(..., ge=2000, le=2100, description="年份"),
-    permission: str = Query("internal", description="数据权限: public/internal/private"),
+    permission: str = Query("internal", description="数据权限: public/internal/public+training/internal+training"),
     skip_dedup: bool = Query(False, description="是否跳过去重"),
     skip_ts: bool = Query(False, description="是否跳过时间序列预处理"),
     user: User = Depends(role_required("gov", "enterprise")),

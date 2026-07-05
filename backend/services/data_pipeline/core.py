@@ -201,11 +201,16 @@ class DataPipeline:
         
         # 权限加成
         permission_bonus = {
-            "gov": 0.15,        # 政务数据权威性加成
-            "enterprise": 0.0,  # 企业数据正常
-            "internal": 0.05,   # 内部数据小加成
+            "gov": 0.15,              # 政务数据权威性加成
+            "enterprise": 0.0,        # 企业数据正常
+            "internal": 0.05,         # 内部数据小加成
+            "public": 0.0,            # 公开数据
+            "public+training": 0.03,  # 公开+训练（数据质量有保障）
+            "internal+training": 0.08,# 内部+训练（最高可信度）
         }
-        weight += permission_bonus.get(permission, 0.0)
+        # 提取基础权限（去掉+training后缀）
+        base_perm = permission.split('+')[0]
+        weight += permission_bonus.get(permission, permission_bonus.get(base_perm, 0.0))
         
         # 验证错误扣分（每个错误扣2%，最多扣20%）
         error_penalty = min(len(validation_errors) * 0.02, 0.20)
