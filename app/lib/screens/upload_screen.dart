@@ -307,20 +307,27 @@ class _UploadScreenState extends State<UploadScreen> {
         ),
       ),
       const SizedBox(height: 12),
-      // 年份选择（当前年份往前推20年）
+      // 年份选择（当前年份往前推20年，可横向滚动）
       Row(children: [
         Text('年份: ', style: TextStyle(fontSize: 14, color: AppColors.paper)),
         const SizedBox(width: 8),
-        ...List.generate(21, (i) => DateTime.now().year - i).map((y) => Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: ChoiceChip(
-            label: Text('$y', style: TextStyle(fontSize: 12)),
-            selected: _year == y,
-            onSelected: (_) => setState(() => _year = y),
-            selectedColor: AppColors.celadon.withOpacity(0.2),
-            labelStyle: TextStyle(color: _year == y ? AppColors.celadon : AppColors.paperDim),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(21, (i) => DateTime.now().year - i).map((y) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text('$y', style: TextStyle(fontSize: 12)),
+                  selected: _year == y,
+                  onSelected: (_) => setState(() => _year = y),
+                  selectedColor: AppColors.celadon.withOpacity(0.2),
+                  labelStyle: TextStyle(color: _year == y ? AppColors.celadon : AppColors.paperDim),
+                ),
+              )).toList(),
+            ),
           ),
-        )),
+        ),
       ]),
       const SizedBox(height: 12),
       // 权限选择
