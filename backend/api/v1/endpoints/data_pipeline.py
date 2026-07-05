@@ -135,6 +135,7 @@ async def upload_with_pipeline(
             city=city,
             year=year,
             role=user.role,
+            permission=permission.split('+')[0],
             risk_score=risk_score,
             risk_level=risk_level,
             trend=trend,
@@ -152,6 +153,7 @@ async def upload_with_pipeline(
         rows=original_rows,
         cols=len(df.columns),
         status="confirmed",
+        permission=permission,
     )
     db.add(record)
     

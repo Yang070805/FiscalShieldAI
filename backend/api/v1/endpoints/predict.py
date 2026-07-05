@@ -45,13 +45,15 @@ async def predict_city(
     city = city.strip()
     
     # 1. 查缓存
-    result = await db.execute(
-        select(Prediction).where(
-            Prediction.city == city,
-            Prediction.year == year,
-            Prediction.role == user.role,
-        )
+    query = select(Prediction).where(
+        Prediction.city == city,
+        Prediction.year == year,
+        Prediction.role == user.role,
     )
+    # 公民只看公开数据
+    if user.role == "citizen":
+        query = query.where(Prediction.permission == "public")
+    result = await db.execute(query)
     cached = result.scalar_one_or_none()
 
     if cached:
@@ -78,6 +80,7 @@ async def predict_city(
         city=city,
         year=year,
         role=user.role,
+        permission="public",  # 模型预测默认公开
         risk_score=pred["risk_score"],
         risk_level=pred["risk_level"],
         trend=pred["trend"],

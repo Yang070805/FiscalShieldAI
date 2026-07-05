@@ -21,4 +21,5 @@ class UploadRecord(Base):
     rows: Mapped[int] = mapped_column(Integer, comment="数据行数")
     cols: Mapped[int] = mapped_column(Integer, comment="数据列数")
     status: Mapped[str] = mapped_column(String(20), default="pending", comment="状态: pending/confirmed/rejected")
+    permission: Mapped[str] = mapped_column(String(30), default="internal", comment="数据权限: public/internal/public+training/internal+training")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, comment="上传时间")

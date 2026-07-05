@@ -151,6 +151,7 @@ async def upload_confirm(
             city=req.city,
             year=req.year,
             role=user.role,
+            permission=req.permission.split('+')[0],  # 存基础权限
             risk_score=risk_score,
             risk_level=risk_level,
             trend=trend,
@@ -163,6 +164,7 @@ async def upload_confirm(
     if record:
         record.city = req.city
         record.year = req.year
+        record.permission = req.permission
         record.status = "confirmed"
 
     await db.commit()
@@ -242,7 +244,10 @@ async def public_data(
     获取公开数据 — 民用端仪表盘展示
     只返回 role='gov' 上传的、risk_score 非默认值的数据
     """
-    query = select(Prediction).where(Prediction.role == "gov")
+    query = select(Prediction).where(
+        Prediction.role == "gov",
+        Prediction.permission == "public",
+    )
 
     if city:
         query = query.where(Prediction.city == city)

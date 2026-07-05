@@ -39,14 +39,17 @@ async def search(
     matched_cities = [c for c in cities if q in c]
 
     # 搜索预测记录
-    result = await db.execute(
-        select(Prediction).where(
-            or_(
-                Prediction.city.ilike(f"%{q}%"),
-                Prediction.risk_level.ilike(f"%{q}%"),
-            )
-        ).order_by(Prediction.created_at.desc()).limit(20)
+    query = select(Prediction).where(
+        or_(
+            Prediction.city.ilike(f"%{q}%"),
+            Prediction.risk_level.ilike(f"%{q}%"),
+        )
     )
+    # 公民只看公开数据
+    if user.role == "citizen":
+        query = query.where(Prediction.permission == "public")
+    query = query.order_by(Prediction.created_at.desc()).limit(20)
+    result = await db.execute(query)
     predictions = result.scalars().all()
 
     return ok(data={

@@ -17,6 +17,7 @@ class Prediction(Base):
     city: Mapped[str] = mapped_column(String(50), index=True, comment="城市名")
     year: Mapped[int] = mapped_column(Integer, index=True, comment="预测年份")
     role: Mapped[str] = mapped_column(String(20), default="citizen", comment="请求角色")
+    permission: Mapped[str] = mapped_column(String(30), default="public", comment="数据权限")
 
     # 预测结果
     risk_score: Mapped[float] = mapped_column(Float, comment="综合风险分(0-100)")
