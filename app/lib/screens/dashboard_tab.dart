@@ -8,6 +8,7 @@ import '../widgets/glass_widgets.dart';
 import '../widgets/ink_bar_chart.dart';
 import 'chat_panel.dart';
 import 'upload_screen.dart';
+import '../main.dart'; // routeObserver
 
 /// 仪表盘 — 三角色差异化 + LLM 聊天面板
 class DashboardTab extends StatefulWidget {
@@ -19,7 +20,7 @@ class DashboardTab extends StatefulWidget {
   State<DashboardTab> createState() => _DashboardTabState();
 }
 
-class _DashboardTabState extends State<DashboardTab> {
+class _DashboardTabState extends State<DashboardTab> with RouteAware {
   final ApiService _api = ApiService();
 
   // ── 政务版状态 ──
@@ -69,7 +70,20 @@ class _DashboardTabState extends State<DashboardTab> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _checkLlmConfig(); // 每次页面可见时重新检查 LLM 配置
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+    _checkLlmConfig();
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  /// 从其他页面返回时重新检查 LLM 配置
+  @override
+  void didPopNext() {
+    _checkLlmConfig();
   }
 
   /// 加载公开数据（民用端）
@@ -257,7 +271,7 @@ class _DashboardTabState extends State<DashboardTab> {
   bool _hasLlmConfig = false;
 
   Future<void> _checkLlmConfig() async {
-    await Future.delayed(const Duration(milliseconds: 500)); // 等待 loginPhone 加载
+    await Future.delayed(const Duration(milliseconds: 300)); // 短暂等待 loginPhone 加载
     if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
     final phone = prefs.getString('loginPhone') ?? '';

@@ -9,6 +9,9 @@ import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/api_service.dart';
 
+/// 路由观察者 — 用于检测页面返回事件
+final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 真机用电脑局域网IP，模拟器用 10.0.2.2
@@ -78,6 +81,7 @@ class _FiscalShieldAppState extends State<FiscalShieldApp> {
         title: 'FiscalShield AI',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
+        navigatorObservers: [routeObserver],
         home: const SplashScreen(),
         routes: {
           '/login': (_) => const LoginScreen(),
