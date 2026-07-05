@@ -23,7 +23,9 @@ SYSTEM_PROMPT = """你是 FiscalShield AI 财政风险分析助手。你的职�
 3. 提供风险预警和政策建议
 4. 基于历史数据给出趋势预测
 
-回答要简洁、专业、有数据支撑。如果用户询问的是具体城市数据，请说明你需要先查询数据库。"""
+你拥有该城市多年的实际财政数据和模型预测数据。回答时要引用具体数据，
+告诉用户你已经拥有哪些年份的数据。如果用户问的年份在数据范围内，
+直接基于数据分析；如果超出范围，说明数据可用范围并给出最近可用年份的分析。"""
 
 
 async def call_llm_stream(
@@ -61,19 +63,48 @@ async def call_llm_stream(
     if context_parts:
         messages.append({"role": "system", "content": "\n".join(context_parts)})
 
-    # 如果有城市和年份，自动查询预测数据注入上下文
-    if city and year:
+    # 如果有城市，自动查询预测数据注入上下文
+    if city:
         try:
-            from services.ai_engine import predict_by_city
-            pred = predict_by_city(city, year)
+            from services.ai_engine import predict_by_city, AI_ENGINE_DIR
+            import pandas as pd
+
+            # 1. 查指定年份的预测数据
+            target_year = year or 2026
+            pred = predict_by_city(city, target_year)
+            print(f"[llm_chat] city={city}, year={target_year}, pred_error={'error' in pred if isinstance(pred, dict) else 'N/A'}")
             if "error" not in pred:
                 data_text = json.dumps(pred, ensure_ascii=False, indent=2)
                 messages.append({
                     "role": "system",
-                    "content": f"以下是{city} {year}年的财政风险预测数据，请基于此数据回答用户问题：\n{data_text}",
+                    "content": f"以下是{city} {target_year}年的财政风险预测数据，请基于此数据回答用户问题：\n{data_text}",
                 })
+                print(f"[llm_chat] 注入{target_year}年预测数据成功")
+
+            # 2. 读取该城市所有可用年份的实际数据（最近5年摘要）
+            data_file = AI_ENGINE_DIR / "data" / f"{city}_data.xlsx"
+            if data_file.exists():
+                df = pd.read_excel(str(data_file))
+                available_years = sorted(df["年份"].unique())
+                recent_years = available_years[-5:]  # 最近5年
+                summary_lines = [f"{city}可用数据年份: {', '.join(str(y) for y in available_years)}"]
+                for y in recent_years:
+                    row = df[df["年份"] == y]
+                    if not row.empty:
+                        vals = row.iloc[0].to_dict()
+                        # 只保留数值列，去掉年份本身
+                        numeric = {k: round(v, 2) if isinstance(v, (int, float)) else v for k, v in vals.items() if k != "年份" and isinstance(v, (int, float))}
+                        summary_lines.append(f"{y}年: {json.dumps(numeric, ensure_ascii=False)}")
+                summary = "\n".join(summary_lines)
+                messages.append({
+                    "role": "system",
+                    "content": f"以下是{city}的历史财政数据摘要，请结合数据回答用户关于各年份的问题：\n{summary}",
+                })
+                print(f"[llm_chat] 注入{city}历史数据成功，年份={recent_years}")
         except Exception as e:
-            print(f"[llm_chat] 查询预测数据失败: {e}")
+            print(f"[llm_chat] 查询数据失败: {e}")
+    else:
+        print(f"[llm_chat] 未注入数据: city={city}, year={year}")
 
     # 添加历史对话
     if history:
@@ -82,6 +113,12 @@ async def call_llm_stream(
 
     # 添加当前消息
     messages.append({"role": "user", "content": message})
+
+    # 调试日志：打印发给LLM的消息数和每条role
+    print(f"[llm_chat] 发给LLM {len(messages)} 条消息: {[m['role'] for m in messages]}")
+    for i, m in enumerate(messages):
+        content_preview = m['content'][:80] if len(m['content']) > 80 else m['content']
+        print(f"  [{i}] {m['role']}: {content_preview}")
 
     # 构建请求体
     is_anthropic = model == "anthropic"

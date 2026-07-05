@@ -349,6 +349,7 @@ class _DashboardTabState extends State<DashboardTab> with RouteAware {
       builder: (_) => ChatPanel(
         role: widget.role,
         contextCity: widget.role != 'enterprise' ? _city : null,
+        contextYear: widget.role != 'enterprise' ? _year : null,
         contextCompany: widget.role == 'enterprise' ? _company : null,
       ),
     );

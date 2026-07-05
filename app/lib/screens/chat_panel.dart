@@ -9,12 +9,14 @@ import '../widgets/glass_widgets.dart';
 class ChatPanel extends StatefulWidget {
   final String role;
   final String? contextCity;
+  final int? contextYear;
   final String? contextCompany;
 
   const ChatPanel({
     super.key,
     required this.role,
     this.contextCity,
+    this.contextYear,
     this.contextCompany,
   });
 
@@ -37,7 +39,7 @@ class _ChatPanelState extends State<ChatPanel> {
     _loadProvider();
     // 欢迎消息
     final contextHint = widget.contextCity != null
-        ? '当前城市：${widget.contextCity}'
+        ? '当前城市：${widget.contextCity}${widget.contextYear != null ? ' ${widget.contextYear}年' : ''}'
         : widget.contextCompany != null
             ? '当前企业：${widget.contextCompany}'
             : '';
@@ -135,6 +137,7 @@ class _ChatPanelState extends State<ChatPanel> {
         message: message,
         chatId: _chatId,
         city: widget.contextCity,
+        year: widget.contextYear,
         model: _selectedProvider,  // 传 provider key，不是 model name
       )) {
         if (!mounted) return;
