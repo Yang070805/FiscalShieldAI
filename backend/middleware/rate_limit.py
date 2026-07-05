@@ -23,8 +23,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.requests: dict[str, list[float]] = defaultdict(list)
 
     async def dispatch(self, request: Request, call_next):
-        # 跳过健康检查
-        if request.url.path == "/health":
+        # 跳过健康检查和聊天流式接口
+        if request.url.path == "/health" or request.url.path == "/api/v1/chat":
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"
