@@ -467,12 +467,14 @@ class _DashboardTabState extends State<DashboardTab> with RouteAware {
           Row(children: [
             Icon(Icons.shield_rounded, size: 18, color: AppColors.celadon),
             const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('风险监控', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
-                Text('赤字率·债务率·负债率·风险评分', style: TextStyle(fontSize: 10, color: AppColors.paperDim)),
-              ],
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('风险监控', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
+                  Text('赤字率·债务率·负债率·风险评分', style: TextStyle(fontSize: 10, color: AppColors.paperDim), overflow: TextOverflow.ellipsis),
+                ],
+              ),
             ),
             const Spacer(),
             if (unresolved > 0)
