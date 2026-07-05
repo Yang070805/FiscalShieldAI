@@ -834,7 +834,7 @@ class _DashboardTabState extends State<DashboardTab> with RouteAware {
               children: [
                 Text('上传企业财报', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.paper, decoration: TextDecoration.none)),
                 const SizedBox(height: 2),
-                Text('支持 Excel / PDF，自动提取关键指标', style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
+                Text('支持 Excel / CSV，自动提取关键指标', style: TextStyle(fontSize: 12, color: AppColors.paperDim)),
               ],
             ),
           ),
