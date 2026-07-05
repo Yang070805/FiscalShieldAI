@@ -177,8 +177,13 @@ class ApiService {
   Future<Map<String, dynamic>> getReport({
     required String city,
     required int year,
+    bool llmEnabled = false,
   }) async {
-    final result = await _get('/api/v1/report/$city', params: {'year': year.toString()});
+    final params = <String, String>{
+      'year': year.toString(),
+      'llm_enabled': llmEnabled.toString(),
+    };
+    final result = await _get('/api/v1/report/$city', params: params);
     if (result['success'] == true) {
       return result['data'] ?? {};
     }

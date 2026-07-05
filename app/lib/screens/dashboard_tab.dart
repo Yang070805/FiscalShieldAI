@@ -183,7 +183,9 @@ class _DashboardTabState extends State<DashboardTab> with RouteAware {
   Future<void> _loadReport() async {
     if (_reportContent != null) return;
     try {
-      final data = await _api.getReport(city: _city, year: _year);
+      final prefs = await SharedPreferences.getInstance();
+      final llmEnabled = prefs.getBool('llmEnabled') ?? false;
+      final data = await _api.getReport(city: _city, year: _year, llmEnabled: llmEnabled);
       setState(() => _reportContent = data['content'] ?? '暂无报告');
     } on ApiException catch (e) {
       setState(() => _reportContent = '报告生成失败: ${e.message}');
@@ -271,9 +273,16 @@ class _DashboardTabState extends State<DashboardTab> with RouteAware {
   bool _hasLlmConfig = false;
 
   Future<void> _checkLlmConfig() async {
-    await Future.delayed(const Duration(milliseconds: 300)); // 短暂等待 loginPhone 加载
+    await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
+    // 先检查全局开关
+    final llmEnabled = prefs.getBool('llmEnabled') ?? false;
+    if (!llmEnabled) {
+      if (mounted) setState(() => _hasLlmConfig = false);
+      return;
+    }
+    // 再检查是否有 API Key
     final phone = prefs.getString('loginPhone') ?? '';
     final prefix = phone.isNotEmpty ? '${phone}_' : '';
     final providers = ['bluelm', 'deepseek', 'qwen', 'doubao', 'openai', 'anthropic', 'kimi', 'glm'];

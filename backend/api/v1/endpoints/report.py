@@ -21,6 +21,7 @@ router = APIRouter(prefix="/report", tags=["报告"])
 async def get_report(
     city: str,
     year: int = Query(..., ge=2020, le=2035, description="报告年份"),
+    llm_enabled: bool = Query(False, description="是否启用LLM增强"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -52,7 +53,7 @@ async def get_report(
         )
 
     # 2. 生成报告
-    report = generate_report(city, year, role=user.role)
+    report = generate_report(city, year, role=user.role, llm_enabled=llm_enabled)
     if "error" in report:
         return ok(data=report, message=report["error"])
 

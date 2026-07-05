@@ -255,11 +255,11 @@ def predict_by_city(city: str, year: int) -> dict:
         return _simulated_predict(city, year)
 
 
-def generate_report(city: str, year: int, role: str = "citizen") -> dict:
+def generate_report(city: str, year: int, role: str = "citizen", llm_enabled: bool = False) -> dict:
     """
     AI 报告生成（三-tier 策略）
-    1. 尝试调用 bluelm_report.py（有 API Key 时）
-    2. 无 API Key / 调用失败 → 用本地模板 + 数据填充
+    1. llm_enabled=True 时尝试调用蓝心大模型
+    2. llm_enabled=False 或调用失败 → 用本地模板 + 数据填充
     返回: {city, year, content, source}
     """
     # 先获取预测数据作为报告输入
@@ -267,21 +267,22 @@ def generate_report(city: str, year: int, role: str = "citizen") -> dict:
     if "error" in predict_result:
         return {"error": predict_result["error"]}
 
-    # Tier 1: 尝试调用蓝心大模型
-    try:
-        from bluelm_report import ReportGenerator
-        gen = ReportGenerator(api_key="")
+    # Tier 1: 仅在启用 LLM 时尝试调用蓝心大模型
+    if llm_enabled:
+        try:
+            from bluelm_report import ReportGenerator
+            gen = ReportGenerator(api_key="")
 
-        report_text = gen.generate_report(predict_result)
-        if report_text:
-            return {
-                "city": city,
-                "year": year,
-                "content": report_text,
-                "source": "bluelm",
-            }
-    except Exception as e:
-        print(f"[ai_engine] bluelm 调用失败: {e}")
+            report_text = gen.generate_report(predict_result)
+            if report_text:
+                return {
+                    "city": city,
+                    "year": year,
+                    "content": report_text,
+                    "source": "bluelm",
+                }
+        except Exception as e:
+            print(f"[ai_engine] bluelm 调用失败: {e}")
 
     # Tier 2: 本地模板报告
     return _local_report(city, year, predict_result)
