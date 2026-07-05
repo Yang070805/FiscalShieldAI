@@ -618,7 +618,7 @@ class ApiService {
     required String creditCode,
     required String contactPhone,
   }) async {
-    final result = await _post('/api/v1/enterprise/register', {
+    final result = await _post('/api/v1/enterprise/register', body: {
       'enterprise_name': enterpriseName,
       'credit_code': creditCode,
       'contact_phone': contactPhone,
@@ -641,7 +641,7 @@ class ApiService {
     required String password,
     String enterpriseRole = 'member',
   }) async {
-    final result = await _post('/api/v1/enterprise/member/create', {
+    final result = await _post('/api/v1/enterprise/member/create', body: {
       'phone': phone,
       'nickname': nickname,
       'password': password,
@@ -672,7 +672,7 @@ class ApiService {
   Future<void> resetMemberPassword(int memberId, String newPassword) async {
     final result = await _post(
       '/api/v1/enterprise/member/$memberId/reset-password',
-      {'new_password': newPassword},
+      body: {'new_password': newPassword},
     );
     if (result['success'] != true) {
       throw ApiException(result['message'] ?? '重置密码失败');
@@ -681,7 +681,7 @@ class ApiService {
 
   /// 转让管理员
   Future<void> transferAdmin(int memberId) async {
-    final result = await _post('/api/v1/enterprise/transfer-admin', {
+    final result = await _post('/api/v1/enterprise/transfer-admin', body: {
       'member_id': memberId,
     });
     if (result['success'] != true) {
